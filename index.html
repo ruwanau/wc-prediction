@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>2026 FIFA World Cup Friendly Prediction Game</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top, rgba(34,197,94,0.12), transparent 35%),
+        linear-gradient(to bottom, #07111f, #0f172a);
+    }
+
+    .glass {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .tab-active {
+      background: linear-gradient(to right, #facc15, #f59e0b);
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .score-input::-webkit-outer-spin-button,
+    .score-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .score-input {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-white">
+
+  <!-- HEADER -->
+  <header class="border-b border-white/10 bg-black/20 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-wide text-yellow-400">
+          ⚽ 2026 FIFA World Cup Prediction Game
+        </h1>
+        <p class="text-slate-300 text-sm mt-1">
+          Friendly Prediction Pool Demo
+        </p>
+      </div>
+
+      <div class="flex gap-2 flex-wrap">
+        <button class="tab-btn tab-active px-4 py-2 rounded-xl transition" data-tab="predictTab">
+          Predict Matches
+        </button>
+
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition" data-tab="leaderboardTab">
+          Leaderboard
+        </button>
+
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition" data-tab="rulesTab">
+          Rules & Scoring
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 md:p-6">
+
+    <!-- PREDICTIONS TAB -->
+    <section id="predictTab" class="tab-content">
+
+      <!-- USER SECTION -->
+      <div class="glass rounded-2xl p-5 mb-6">
+        <div class="flex flex-col md:flex-row gap-4 items-start md:items-end">
+          <div class="flex-1">
+            <label class="block text-sm text-slate-300 mb-2">Your Name</label>
+            <input
+              type="text"
+              id="userName"
+              placeholder="Enter your name"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+          </div>
+
+          <button
+            id="savePredictionsBtn"
+            class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-3 rounded-xl transition"
+          >
+            Save Predictions
+          </button>
+        </div>
+      </div>
+
+      <!-- MATCHES -->
+      <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section id="leaderboardTab" class="tab-content hidden">
+
+      <div class="glass rounded-2xl p-6">
+        <div class="flex justify-between items-center mb-5">
+          <h2 class="text-2xl font-bold text-yellow-400">
+            🏆 Leaderboard
+          </h2>
+
+          <button
+            onclick="refreshLeaderboard()"
+            class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl"
+          >
+            Refresh
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-700 text-slate-300">
+                <th class="py-3 px-3">Rank</th>
+                <th class="py-3 px-3">User</th>
+                <th class="py-3 px-3">Correct Scores</th>
+                <th class="py-3 px-3">Correct Outcomes</th>
+                <th class="py-3 px-3">Total Points</th>
+              </tr>
+            </thead>
+
+            <tbody id="leaderboardBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- RULES -->
+    <section id="rulesTab" class="tab-content hidden">
+
+      <div class="glass rounded-2xl p-6 space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-yellow-400 mb-3">
+            📘 Rules & Scoring
+          </h2>
+
+          <ul class="space-y-3 text-slate-200">
+            <li>✅ Exact score prediction = <span class="text-yellow-400 font-bold">3 points</span></li>
+            <li>✅ Correct winner/draw outcome only = <span class="text-yellow-400 font-bold">1 point</span></li>
+            <li>❌ Incorrect outcome = <span class="text-yellow-400 font-bold">0 points</span></li>
+            <li>🔥 Knockout stage matches apply a <span class="text-yellow-400 font-bold">1.5x multiplier</span></li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-5 border border-slate-700">
+          <h3 class="font-bold text-lg mb-3 text-green-400">
+            Example Scenarios
+          </h3>
+
+          <div class="space-y-2 text-slate-300">
+            <p><strong>Predicted:</strong> 2-1 | <strong>Actual:</strong> 2-1 → 3 pts</p>
+            <p><strong>Predicted:</strong> 1-0 | <strong>Actual:</strong> 2-1 → 1 pt</p>
+            <p><strong>Predicted:</strong> 0-2 | <strong>Actual:</strong> 1-1 → 0 pts</p>
+            <p><strong>Knockout Match:</strong> 3 pts × 1.5 = 4.5 pts</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN PANEL -->
+    <section class="mt-10">
+      <div class="glass rounded-2xl overflow-hidden">
+
+        <button
+          id="adminToggle"
+          class="w-full text-left px-6 py-4 bg-red-700 hover:bg-red-600 transition font-bold"
+        >
+          🔒 Admin Control Panel
+        </button>
+
+        <div id="adminPanel" class="hidden p-6">
+
+          <div class="flex flex-col lg:flex-row gap-6">
+
+            <div class="flex-1">
+              <h3 class="text-xl font-bold text-yellow-400 mb-4">
+                Enter Actual Results
+              </h3>
+
+              <div id="adminMatches" class="space-y-4"></div>
+            </div>
+
+            <div class="lg:w-72">
+              <div class="bg-slate-900 rounded-xl p-5 border border-slate-700">
+                <h3 class="font-bold text-lg mb-4 text-red-400">
+                  ⚠ Admin Actions
+                </h3>
+
+                <button
+                  id="recalculateBtn"
+                  class="w-full mb-3 bg-green-600 hover:bg-green-500 px-4 py-3 rounded-xl font-bold"
+                >
+                  Recalculate Scores
+                </button>
+
+                <button
+                  id="resetBtn"
+                  class="w-full bg-red-600 hover:bg-red-500 px-4 py-3 rounded-xl font-bold"
+                >
+                  Reset Pool
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+
+    // =========================
+    // SAMPLE MATCHES
+    // =========================
+
+    const matches = [
+      {
+        id: 1,
+        stage: "Group",
+        home: "USA",
+        away: "Japan",
+        homeFlag: "🇺🇸",
+        awayFlag: "🇯🇵",
+        kickoff: "Starts in 12 days"
+      },
+      {
+        id: 2,
+        stage: "Group",
+        home: "Australia",
+        away: "Mexico",
+        homeFlag: "🇦🇺",
+        awayFlag: "🇲🇽",
+        kickoff: "Starts in 14 days"
+      },
+      {
+        id: 3,
+        stage: "Group",
+        home: "Brazil",
+        away: "Germany",
+        homeFlag: "🇧🇷",
+        awayFlag: "🇩🇪",
+        kickoff: "Starts in 16 days"
+      },
+      {
+        id: 4,
+        stage: "Group",
+        home: "Argentina",
+        away: "Canada",
+        homeFlag: "🇦🇷",
+        awayFlag: "🇨🇦",
+        kickoff: "Starts in 17 days"
+      },
+      {
+        id: 5,
+        stage: "Knockout",
+        home: "England",
+        away: "France",
+        homeFlag: "🏴",
+        awayFlag: "🇫🇷",
+        kickoff: "Starts in 24 days"
+      },
+      {
+        id: 6,
+        stage: "Knockout",
+        home: "Spain",
+        away: "Portugal",
+        homeFlag: "🇪🇸",
+        awayFlag: "🇵🇹",
+        kickoff: "Starts in 25 days"
+      }
+    ];
+
+    // =========================
+    // STORAGE HELPERS
+    // =========================
+
+    function getPredictions() {
+      return JSON.parse(localStorage.getItem("wc_predictions") || "{}");
+    }
+
+    function savePredictionsData(data) {
+      localStorage.setItem("wc_predictions", JSON.stringify(data));
+    }
+
+    function getResults() {
+      return JSON.parse(localStorage.getItem("wc_results") || "{}");
+    }
+
+    function saveResults(data) {
+      localStorage.setItem("wc_results", JSON.stringify(data));
+    }
+
+    function getLeaderboardData() {
+      return JSON.parse(localStorage.getItem("wc_leaderboard") || "[]");
+    }
+
+    function saveLeaderboardData(data) {
+      localStorage.setItem("wc_leaderboard", JSON.stringify(data));
+    }
+
+    // =========================
+    // RENDER MATCHES
+    // =========================
+
+    function renderMatches() {
+      const container = document.getElementById("matchesContainer");
+      const adminContainer = document.getElementById("adminMatches");
+
+      container.innerHTML = "";
+      adminContainer.innerHTML = "";
+
+      const results = getResults();
+
+      matches.forEach(match => {
+
+        // USER MATCH CARD
+
+        const card = document.createElement("div");
+        card.className = "glass rounded-2xl p-6";
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <span class="text-xs uppercase tracking-wider bg-green-600 px-3 py-1 rounded-full">
+                ${match.stage}
+              </span>
+            </div>
+
+            <div class="text-sm text-slate-300">
+              ⏳ ${match.kickoff}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+
+            <div class="flex flex-col items-center w-1/3">
+              <div class="text-5xl">${match.homeFlag}</div>
+              <div class="mt-2 font-bold text-center">${match.home}</div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <input
+                type="number"
+                min="0"
+                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl font-bold"
+                id="home-${match.id}"
+              />
+
+              <div class="text-2xl font-bold text-yellow-400">:</div>
+
+              <input
+                type="number"
+                min="0"
+                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl font-bold"
+                id="away-${match.id}"
+              />
+            </div>
+
+            <div class="flex flex-col items-center w-1/3">
+              <div class="text-5xl">${match.awayFlag}</div>
+              <div class="mt-2 font-bold text-center">${match.away}</div>
+            </div>
+          </div>
+
+          <div class="mt-5 text-center text-slate-400 text-sm">
+            ${match.home} vs ${match.away}
+          </div>
+        `;
+
+        container.appendChild(card);
+
+        // ADMIN RESULT CARD
+
+        const actual = results[match.id] || {};
+
+        const adminCard = document.createElement("div");
+
+        adminCard.className = "bg-slate-900 border border-slate-700 rounded-xl p-4";
+
+        adminCard.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+            <div>
+              <div class="font-bold">
+                ${match.homeFlag} ${match.home}
+                vs
+                ${match.awayFlag} ${match.away}
+              </div>
+
+              <div class="text-sm text-slate-400 mt-1">
+                ${match.stage} Stage
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+
+              <input
+                type="number"
+                min="0"
+                id="actual-home-${match.id}"
+                value="${actual.home ?? ""}"
+                class="w-16 h-12 rounded-lg bg-slate-800 border border-slate-600 text-center"
+              />
+
+              <span class="text-yellow-400 font-bold">:</span>
+
+              <input
+                type="number"
+                min="0"
+                id="actual-away-${match.id}"
+                value="${actual.away ?? ""}"
+                class="w-16 h-12 rounded-lg bg-slate-800 border border-slate-600 text-center"
+              />
+
+              <button
+                onclick="saveActualResult(${match.id})"
+                class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-4 py-2 rounded-lg"
+              >
+                Save
+              </button>
+
+            </div>
+          </div>
+        `;
+
+        adminContainer.appendChild(adminCard);
+      });
+    }
+
+    // =========================
+    // SAVE USER PREDICTIONS
+    // =========================
+
+    document.getElementById("savePredictionsBtn")
+      .addEventListener("click", () => {
+
+        const userName = document.getElementById("userName").value.trim();
+
+        if (!userName) {
+          alert("Please enter your name.");
+          return;
+        }
+
+        const predictions = getPredictions();
+
+        predictions[userName] = {};
+
+        matches.forEach(match => {
+
+          const homeVal = document.getElementById(`home-${match.id}`).value;
+          const awayVal = document.getElementById(`away-${match.id}`).value;
+
+          predictions[userName][match.id] = {
+            home: homeVal === "" ? null : Number(homeVal),
+            away: awayVal === "" ? null : Number(awayVal)
+          };
+        });
+
+        savePredictionsData(predictions);
+
+        calculateLeaderboard();
+
+        alert("Predictions saved successfully!");
+      });
+
+    // =========================
+    // SAVE ACTUAL RESULT
+    // =========================
+
+    function saveActualResult(matchId) {
+
+      const home = document.getElementById(`actual-home-${matchId}`).value;
+      const away = document.getElementById(`actual-away-${matchId}`).value;
+
+      if (home === "" || away === "") {
+        alert("Please enter both actual scores.");
+        return;
+      }
+
+      const results = getResults();
+
+      results[matchId] = {
+        home: Number(home),
+        away: Number(away)
+      };
+
+      saveResults(results);
+
+      calculateLeaderboard();
+
+      alert("Actual result saved.");
+    }
+
+    // =========================
+    // OUTCOME HELPER
+    // =========================
+
+    function getOutcome(home, away) {
+
+      if (home > away) return "HOME";
+      if (away > home) return "AWAY";
+
+      return "DRAW";
+    }
+
+    // =========================
+    // POINTS CALCULATION
+    // =========================
+
+    function calculateLeaderboard() {
+
+      const predictions = getPredictions();
+      const results = getResults();
+
+      const leaderboard = [];
+
+      Object.keys(predictions).forEach(user => {
+
+        let totalPoints = 0;
+        let correctScores = 0;
+        let correctOutcomes = 0;
+
+        matches.forEach(match => {
+
+          const prediction = predictions[user][match.id];
+          const actual = results[match.id];
+
+          if (!prediction || !actual) return;
+
+          if (
+            prediction.home === null ||
+            prediction.away === null
+          ) {
+            return;
+          }
+
+          const multiplier = match.stage === "Knockout" ? 1.5 : 1;
+
+          // EXACT SCORE
+
+          if (
+            prediction.home === actual.home &&
+            prediction.away === actual.away
+          ) {
+
+            totalPoints += 3 * multiplier;
+            correctScores++;
+
+            return;
+          }
+
+          // CORRECT OUTCOME
+
+          const predictedOutcome = getOutcome(
+            prediction.home,
+            prediction.away
+          );
+
+          const actualOutcome = getOutcome(
+            actual.home,
+            actual.away
+          );
+
+          if (predictedOutcome === actualOutcome) {
+
+            totalPoints += 1 * multiplier;
+            correctOutcomes++;
+          }
+
+        });
+
+        leaderboard.push({
+          user,
+          correctScores,
+          correctOutcomes,
+          totalPoints
+        });
+
+      });
+
+      leaderboard.sort((a, b) => {
+        return b.totalPoints - a.totalPoints;
+      });
+
+      saveLeaderboardData(leaderboard);
+
+      refreshLeaderboard();
+    }
+
+    // =========================
+    // RENDER LEADERBOARD
+    // =========================
+
+    function refreshLeaderboard() {
+
+      const leaderboard = getLeaderboardData();
+
+      const tbody = document.getElementById("leaderboardBody");
+
+      tbody.innerHTML = "";
+
+      if (leaderboard.length === 0) {
+
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center py-8 text-slate-400">
+              No leaderboard data available yet.
+            </td>
+          </tr>
+        `;
+
+        return;
+      }
+
+      leaderboard.forEach((entry, index) => {
+
+        const row = document.createElement("tr");
+
+        row.className = "border-b border-slate-800 hover:bg-slate-800/50";
+
+        row.innerHTML = `
+          <td class="py-4 px-3 font-bold">
+            ${index + 1}
+          </td>
+
+          <td class="py-4 px-3">
+            ${entry.user}
+          </td>
+
+          <td class="py-4 px-3">
+            ${entry.correctScores}
+          </td>
+
+          <td class="py-4 px-3">
+            ${entry.correctOutcomes}
+          </td>
+
+          <td class="py-4 px-3 text-yellow-400 font-bold">
+            ${entry.totalPoints}
+          </td>
+        `;
+
+        tbody.appendChild(row);
+      });
+    }
+
+    // =========================
+    // RESET POOL
+    // =========================
+
+    document.getElementById("resetBtn")
+      .addEventListener("click", () => {
+
+        const confirmed = confirm(
+          "Are you sure you want to reset the entire pool?"
+        );
+
+        if (!confirmed) return;
+
+        localStorage.removeItem("wc_predictions");
+        localStorage.removeItem("wc_results");
+        localStorage.removeItem("wc_leaderboard");
+
+        refreshLeaderboard();
+        renderMatches();
+
+        alert("Pool reset complete.");
+      });
+
+    // =========================
+    // RECALCULATE
+    // =========================
+
+    document.getElementById("recalculateBtn")
+      .addEventListener("click", () => {
+
+        calculateLeaderboard();
+
+        alert("Leaderboard recalculated.");
+      });
+
+    // =========================
+    // ADMIN TOGGLE
+    // =========================
+
+    document.getElementById("adminToggle")
+      .addEventListener("click", () => {
+
+        document
+          .getElementById("adminPanel")
+          .classList.toggle("hidden");
+      });
+
+    // =========================
+    // TABS
+    // =========================
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+
+      btn.addEventListener("click", () => {
+
+        document.querySelectorAll(".tab-btn")
+          .forEach(b => {
+            b.classList.remove("tab-active");
+            b.classList.add("bg-slate-800");
+          });
+
+        btn.classList.add("tab-active");
+        btn.classList.remove("bg-slate-800");
+
+        const target = btn.dataset.tab;
+
+        document.querySelectorAll(".tab-content")
+          .forEach(tab => tab.classList.add("hidden"));
+
+        document.getElementById(target)
+          .classList.remove("hidden");
+      });
+    });
+
+    // =========================
+    // INIT
+    // =========================
+
+    renderMatches();
+    calculateLeaderboard();
+
+  </script>
+
+</body>
+</html>
