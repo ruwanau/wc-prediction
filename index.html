@@ -344,14 +344,14 @@
     // FIREBASE CONFIG
     // =====================================
 
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_MESSAGING_ID",
-      appId: "YOUR_APP_ID"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
+  authDomain: "wc-prediction-nk.firebaseapp.com",
+  projectId: "wc-prediction-nk",
+  storageBucket: "wc-prediction-nk.firebasestorage.app",
+  messagingSenderId: "791400320278",
+  appId: "1:791400320278:web:7faed774a893dc7c399437"
+};
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -958,47 +958,5 @@
     calculateLeaderboard();
 
   </script>
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  getDocs,
-  onSnapshot,
-  deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-// YOUR FIREBASE CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
-  authDomain: "wc-prediction-nk.firebaseapp.com",
-  projectId: "wc-prediction-nk",
-  storageBucket: "wc-prediction-nk.firebasestorage.app",
-  messagingSenderId: "791400320278",
-  appId: "1:791400320278:web:7faed774a893dc7c399437"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-window.db = db;
-window.firebaseFns = {
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  getDocs,
-  onSnapshot,
-  deleteDoc
-};
-
-</script>
 </body>
 </html>
