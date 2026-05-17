@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>2026 FIFA World Cup Prediction Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --gold: #f5c842;
+      --gold-light: #fde68a;
+      --red: #dc2626;
+      --green: #16a34a;
+      --dark: #080e1a;
+      --panel: rgba(12, 20, 38, 0.82);
+    }
+
+    * { font-family: 'DM Sans', sans-serif; }
+
+    body {
+      background: var(--dark);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 40% at 50% -10%, rgba(245,200,66,0.12), transparent),
+        radial-gradient(ellipse 60% 30% at 80% 100%, rgba(22,163,74,0.08), transparent),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .glass {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .tab-active {
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+    }
+
+    .score-input::-webkit-inner-spin-button,
+    .score-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .score-input { -moz-appearance: textfield; }
+
+    .display-font { font-family: 'Bebas Neue', cursive; letter-spacing: 0.04em; }
+
+    .match-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .match-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(245,200,66,0.08);
+    }
+
+    .badge-group { background: rgba(22,163,74,0.2); color: #4ade80; border: 1px solid rgba(22,163,74,0.3); }
+    .badge-knockout { background: rgba(245,200,66,0.15); color: var(--gold); border: 1px solid rgba(245,200,66,0.3); }
+    .badge-completed { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+    .badge-live { background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(220,38,38,0.4); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+
+    .score-display {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(245,200,66,0.3);
+      color: var(--gold);
+      font-family: 'Bebas Neue', cursive;
+      font-size: 2rem;
+      width: 3.5rem;
+      height: 3.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.75rem;
+    }
+
+    .result-card {
+      border-left: 3px solid var(--gold);
+      background: rgba(245,200,66,0.04);
+    }
+
+    .auto-lock-indicator {
+      background: rgba(234,179,8,0.1);
+      border: 1px solid rgba(234,179,8,0.3);
+      border-radius: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      color: #fde68a;
+    }
+
+    .countdown-chip {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    thead th { font-family: 'Bebas Neue', cursive; letter-spacing: 0.08em; font-size: 0.9rem; }
+
+    .rank-gold { color: #f5c842; }
+    .rank-silver { color: #94a3b8; }
+    .rank-bronze { color: #cd7c2f; }
+
+    .tab-btn {
+      transition: all 0.15s ease;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    .tab-btn:not(.tab-active):hover { background: rgba(255,255,255,0.08); }
+  </style>
+</head>
+
+<body class="text-white">
+
+<header class="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    <div class="flex items-center gap-3">
+      <span class="text-4xl">⚽</span>
+      <div>
+        <h1 class="display-font text-3xl text-yellow-400 leading-none">2026 FIFA World Cup</h1>
+        <p class="text-slate-400 text-xs mt-0.5">Prediction Game · All kickoffs shown in your local time</p>
+      </div>
+    </div>
+
+    <nav class="flex gap-2 flex-wrap">
+      <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
+      <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
+      <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🏆 Leaderboard</button>
+      <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
+    </nav>
+
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+  <!-- PREDICT TAB -->
+  <section id="predictTab" class="tab-content space-y-5">
+
+    <div class="glass rounded-2xl p-5">
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="flex-1">
+          <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Your Name</label>
+          <input type="text" id="userName"
+            class="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-3 placeholder-slate-600 focus:outline-none focus:border-yellow-500 transition"
+            placeholder="Enter your name" />
+        </div>
+        <button id="savePredictionsBtn"
+          class="bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-bold px-7 py-3 rounded-xl transition-all">
+          Save Predictions
+        </button>
+      </div>
+    </div>
+
+    <div id="lockBanner" class="hidden bg-red-900/40 border border-red-500/50 rounded-2xl p-4 flex items-center gap-3">
+      <span class="text-2xl">🔒</span>
+      <div>
+        <div class="font-bold text-red-300">Predictions Locked</div>
+        <div class="text-sm text-red-400">The administrator has locked predictions. No changes can be made.</div>
+      </div>
+    </div>
+
+    <div id="autoLockBanners" class="space-y-2"></div>
+
+    <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+
+    <div id="noMatchesMsg" class="hidden text-center text-slate-500 py-16">
+      <div class="text-5xl mb-3">📅</div>
+      <div class="text-lg">No matches scheduled yet.</div>
+      <div class="text-sm mt-1">Check back soon!</div>
+    </div>
+
+  </section>
+
+  <!-- RESULTS TAB -->
+  <section id="resultsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Match Results</h2>
+      <p class="text-slate-400 text-sm">Completed match scores and outcomes</p>
+    </div>
+
+    <div id="resultsContainer" class="space-y-3"></div>
+
+    <div id="noResultsMsg" class="hidden text-center text-slate-500 py-16">
+      <div class="text-5xl mb-3">⏳</div>
+      <div class="text-lg">No results yet.</div>
+      <div class="text-sm mt-1">Results will appear here once matches are completed.</div>
+    </div>
+
+  </section>
+
+  <!-- LEADERBOARD TAB -->
+  <section id="leaderboardTab" class="tab-content hidden">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Leaderboard</h2>
+      <p class="text-slate-400 text-sm mb-6">Updated live as results come in</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-slate-700 text-slate-400">
+              <th class="py-3 px-3">Rank</th>
+              <th class="py-3 px-3">Player</th>
+              <th class="py-3 px-3">Exact Scores</th>
+              <th class="py-3 px-3">Correct Results</th>
+              <th class="py-3 px-3">Points</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+        <div id="noLeaderboardMsg" class="hidden text-center text-slate-500 py-10">No predictions saved yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RULES TAB -->
+  <section id="rulesTab" class="tab-content hidden">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-6">Rules & Scoring</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-700">
+          <div class="text-3xl mb-3">🎯</div>
+          <div class="display-font text-2xl text-yellow-400">3 Points</div>
+          <div class="text-sm text-slate-300 mt-1">Exact score prediction</div>
+          <div class="text-xs text-slate-500 mt-2">You predict the exact final scoreline</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-700">
+          <div class="text-3xl mb-3">✅</div>
+          <div class="display-font text-2xl text-yellow-400">1 Point</div>
+          <div class="text-sm text-slate-300 mt-1">Correct outcome (win/draw)</div>
+          <div class="text-xs text-slate-500 mt-2">You got the result right, but not the exact score</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-700">
+          <div class="text-3xl mb-3">🔥</div>
+          <div class="display-font text-2xl text-yellow-400">1.5× Multiplier</div>
+          <div class="text-sm text-slate-300 mt-1">Knockout stage matches</div>
+          <div class="text-xs text-slate-500 mt-2">All points doubled in knockout rounds</div>
+        </div>
+      </div>
+      <div class="mt-6 bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-4">
+        <div class="flex gap-2 items-start">
+          <span class="text-xl">⏰</span>
+          <div>
+            <div class="font-bold text-yellow-300 text-sm">Auto-Lock</div>
+            <div class="text-slate-300 text-sm mt-0.5">Predictions for each match are automatically locked 30 minutes before kickoff. Plan ahead!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="mt-6">
+    <div class="glass rounded-2xl overflow-hidden border border-slate-700">
+
+      <button id="adminToggle"
+        class="w-full text-left bg-slate-800/80 hover:bg-slate-700/80 px-6 py-4 font-bold flex items-center justify-between transition">
+        <span>🔒 Admin Dashboard</span>
+        <span id="adminChevron" class="text-slate-400 text-lg transition-transform">▼</span>
+      </button>
+
+      <div id="adminLogin" class="hidden p-6 border-t border-slate-700">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input type="email" id="adminEmail" placeholder="Admin Email"
+            class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
+          <input type="password" id="adminPassword" placeholder="Admin Password"
+            class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
+          <button id="loginBtn"
+            class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition">
+            Login
+          </button>
+        </div>
+      </div>
+
+      <div id="adminPanel" class="hidden p-6 space-y-6 border-t border-slate-700">
+
+        <!-- LOCK -->
+        <div class="bg-slate-900/60 rounded-2xl p-5 border border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 class="display-font text-xl text-yellow-400">Global Prediction Lock</h3>
+            <p class="text-slate-400 text-sm mt-0.5">Force-lock all predictions regardless of kickoff time</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="lockStatus" class="text-sm text-slate-400">Status: —</span>
+            <button id="toggleLockBtn"
+              class="bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-xl font-bold transition text-sm">
+              Toggle Lock
+            </button>
+          </div>
+        </div>
+
+        <!-- ADD MATCH -->
+        <div class="bg-slate-900/60 rounded-2xl p-5 border border-slate-700">
+          <h3 class="display-font text-xl text-yellow-400 mb-4">Add Match</h3>
+          <p class="text-slate-500 text-xs mb-4">Enter kickoff in Australian Eastern Time (AEST/AEDT). It will be shown to visitors in their local time.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <input type="text" id="homeTeam" placeholder="Home Team"
+              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
+            <input type="text" id="awayTeam" placeholder="Away Team"
+              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
+            <div>
+              <input type="datetime-local" id="kickoff"
+                class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-yellow-500 transition" />
+              <p class="text-xs text-slate-500 mt-1 px-1">Australian Eastern Time</p>
+            </div>
+            <select id="stage"
+              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition">
+              <option value="Group">Group Stage</option>
+              <option value="Knockout">Knockout Stage</option>
+            </select>
+            <button id="addMatchBtn"
+              class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold transition">
+              ➕ Add Match
+            </button>
+          </div>
+        </div>
+
+        <!-- RESULTS -->
+        <div class="bg-slate-900/60 rounded-2xl p-5 border border-slate-700">
+          <h3 class="display-font text-xl text-yellow-400 mb-4">Enter Results</h3>
+          <div id="adminMatches" class="space-y-3"></div>
+        </div>
+
+        <!-- DANGER ZONE -->
+        <div class="bg-red-950/40 rounded-2xl p-5 border border-red-700/50">
+          <h3 class="display-font text-xl text-red-400 mb-1">Danger Zone</h3>
+          <p class="text-slate-500 text-xs mb-5">These actions are irreversible. You will be asked to confirm before anything is deleted.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
+              <div class="font-bold text-sm text-white mb-1">Reset All Predictions</div>
+              <div class="text-xs text-slate-500 mb-3">Deletes every player's saved predictions. Match list and results are kept.</div>
+              <button id="resetPredictionsBtn"
+                class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">
+                🗑 Clear All Predictions
+              </button>
+            </div>
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
+              <div class="font-bold text-sm text-white mb-1">Reset Everything</div>
+              <div class="text-xs text-slate-500 mb-3">Deletes ALL matches, results, and predictions. Wipes the slate completely clean.</div>
+              <button id="resetAllBtn"
+                class="bg-red-800 hover:bg-red-700 border border-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">
+                💥 Reset Entire Game
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIRM MODAL -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div class="glass rounded-2xl p-8 max-w-md w-full mx-4 border border-red-700/50">
+      <div class="text-3xl mb-3 text-center">⚠️</div>
+      <h3 id="modalTitle" class="display-font text-2xl text-red-400 text-center mb-2"></h3>
+      <p id="modalBody" class="text-slate-300 text-sm text-center mb-6"></p>
+      <div class="flex gap-3">
+        <button id="modalCancel"
+          class="flex-1 bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold transition text-sm">
+          Cancel
+        </button>
+        <button id="modalConfirm"
+          class="flex-1 bg-red-600 hover:bg-red-500 px-4 py-3 rounded-xl font-bold transition text-sm">
+          Yes, Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs,
+  doc, setDoc, getDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// ─── FIREBASE CONFIG ────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
+  authDomain: "wc-prediction-nk.firebaseapp.com",
+  projectId: "wc-prediction-nk",
+  storageBucket: "wc-prediction-nk.firebasestorage.app",
+  messagingSenderId: "791400320278",
+  appId: "1:791400320278:web:7faed774a893dc7c399437"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const auth = getAuth(app);
+
+// ─── TIME HELPERS ────────────────────────────────────────────
+// Australian Eastern Time zone identifier
+const AEST_TZ = "Australia/Sydney";
+
+/**
+ * Store kickoff as ISO string interpreted as Australian Eastern Time.
+ * datetime-local gives us "YYYY-MM-DDTHH:mm" without tz info.
+ * We tag it with Sydney tz so we can always recover the original wall-clock time.
+ */
+function aestLocalToUtcMs(datetimeLocalValue) {
+  // Build a date string with explicit timezone offset using Intl
+  // Easiest approach: use the fact that Intl can tell us the offset at a given moment
+  // We'll use a trick: format a UTC date and find what Sydney offset is
+  const [datePart, timePart] = datetimeLocalValue.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute]     = timePart.split(":").map(Number);
+
+  // Create a temp date in UTC and then figure out Sydney's offset
+  // by formatting it and computing the difference
+  const tempUtc = new Date(Date.UTC(year, month - 1, day, hour, minute));
+
+  // Get what Sydney's local time WOULD be for this UTC time
+  const sydneyFormatted = new Intl.DateTimeFormat("en-AU", {
+    timeZone: AEST_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  }).formatToParts(tempUtc);
+
+  const getPart = (type) => Number(sydneyFormatted.find(p => p.type === type).value);
+  const sydY = getPart("year"), sydM = getPart("month"), sydD = getPart("day");
+  const sydH = getPart("hour"), sydMin = getPart("minute");
+
+  // Difference between what we passed in (as UTC) and Sydney local at that UTC point
+  const diffMs = (
+    (year - sydY) * 365.25 * 24 * 3600000 +
+    (month - sydM) * 30.44 * 24 * 3600000 +
+    (day - sydD) * 24 * 3600000 +
+    (hour - sydH) * 3600000 +
+    (minute - sydMin) * 60000
+  );
+
+  // Adjust: if we want Sydney local = (year,month,day,hour,min)
+  // then UTC = tempUtc + diffMs
+  return tempUtc.getTime() + diffMs;
+}
+
+/**
+ * Format a UTC ms timestamp in the user's LOCAL timezone (browser default).
+ */
+function formatLocalTime(utcMs) {
+  if (!utcMs) return "TBA";
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true
+  }).format(new Date(utcMs));
+}
+
+/**
+ * Format in Australian Eastern Time (for admin display).
+ */
+function formatAEST(utcMs) {
+  if (!utcMs) return "TBA";
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: AEST_TZ,
+    weekday: "short", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true
+  }).format(new Date(utcMs));
+}
+
+/**
+ * Is the match locked? (kickoff in < 30 min, or global lock)
+ */
+function isMatchLocked(match, globalLocked) {
+  if (globalLocked) return true;
+  if (!match.kickoffUtcMs) return false;
+  const minsToKickoff = (match.kickoffUtcMs - Date.now()) / 60000;
+  return minsToKickoff <= 30;
+}
+
+// ─── DATA HELPERS ────────────────────────────────────────────
+function getOutcome(home, away) {
+  if (home > away) return "HOME";
+  if (away > home) return "AWAY";
+  return "DRAW";
+}
+
+async function getMatches() {
+  const snapshot = await getDocs(collection(db, "matches"));
+  const matches = [];
+  snapshot.forEach(docSnap => matches.push({ id: docSnap.id, ...docSnap.data() }));
+  matches.sort((a,b) => (a.kickoffUtcMs||0) - (b.kickoffUtcMs||0));
+  return matches;
+}
+
+async function getResults() {
+  const snapshot = await getDocs(collection(db, "results"));
+  const results = {};
+  snapshot.forEach(docSnap => { results[docSnap.id] = docSnap.data(); });
+  return results;
+}
+
+async function getLockStatus() {
+  const lockDoc = await getDoc(doc(db, "settings", "predictionLock"));
+  if (!lockDoc.exists()) return false;
+  return lockDoc.data().locked;
+}
+
+async function setLockStatus(value) {
+  await setDoc(doc(db, "settings", "predictionLock"), { locked: value });
+}
+
+// ─── ADMIN AUTH ───────────────────────────────────────────────
+let adminChevronOpen = false;
+document.getElementById("adminToggle").addEventListener("click", () => {
+  const login  = document.getElementById("adminLogin");
+  const panel  = document.getElementById("adminPanel");
+  const isAuth = !panel.classList.contains("hidden");
+  if (!isAuth) login.classList.toggle("hidden");
+  adminChevronOpen = !adminChevronOpen;
+  document.getElementById("adminChevron").style.transform = adminChevronOpen ? "rotate(180deg)" : "";
+});
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email    = document.getElementById("adminEmail").value;
+  const password = document.getElementById("adminPassword").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    alert("Admin login successful.");
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+onAuthStateChanged(auth, user => {
+  document.getElementById("adminPanel").classList.toggle("hidden", !user);
+  document.getElementById("adminLogin").classList.toggle("hidden", !!user);
+  if (user) updateLockStatusLabel();
+});
+
+// ─── RESULTS TAB ─────────────────────────────────────────────
+async function renderResultsTab() {
+  const matches   = await getMatches();
+  const results   = await getResults();
+  const container = document.getElementById("resultsContainer");
+  const noMsg     = document.getElementById("noResultsMsg");
+
+  const completed = matches.filter(m => results[m.id] && results[m.id].home !== undefined);
+
+  container.innerHTML = "";
+
+  if (completed.length === 0) {
+    noMsg.classList.remove("hidden");
+    return;
+  }
+  noMsg.classList.add("hidden");
+
+  completed.forEach(match => {
+    const r = results[match.id];
+    const outcome = getOutcome(r.home, r.away);
+    const outcomeLabel = outcome === "HOME"
+      ? `${match.home} Win`
+      : outcome === "AWAY"
+        ? `${match.away} Win`
+        : "Draw";
+
+    const card = document.createElement("div");
+    card.className = "glass result-card rounded-2xl p-5 match-card";
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${match.stage === 'Knockout' ? 'badge-knockout' : 'badge-group'}">${match.stage}</span>
+          <span class="badge-completed px-2.5 py-0.5 rounded-full text-xs font-medium">Full Time</span>
+        </div>
+        <span class="text-xs text-slate-500">${formatLocalTime(match.kickoffUtcMs)}</span>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-1 text-right">
+          <div class="text-lg font-bold text-white">${match.home}</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="score-display">${r.home}</div>
+          <div class="display-font text-2xl text-slate-500">–</div>
+          <div class="score-display">${r.away}</div>
+        </div>
+        <div class="flex-1 text-left">
+          <div class="text-lg font-bold text-white">${match.away}</div>
+        </div>
+      </div>
+      <div class="mt-3 text-center">
+        <span class="text-xs text-yellow-400/70 font-medium">${outcomeLabel}</span>
+        ${match.stage === "Knockout" ? '<span class="ml-2 text-xs text-purple-400">1.5× Points</span>' : ''}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ─── RENDER MATCHES (PREDICT TAB) ────────────────────────────
+async function renderMatches() {
+  const matches      = await getMatches();
+  const results      = await getResults();
+  const globalLocked = await getLockStatus();
+
+  const container   = document.getElementById("matchesContainer");
+  const adminCont   = document.getElementById("adminMatches");
+  const noMatchMsg  = document.getElementById("noMatchesMsg");
+
+  container.innerHTML  = "";
+  adminCont.innerHTML  = "";
+
+  document.getElementById("lockBanner").classList.toggle("hidden", !globalLocked);
+
+  // Auto-lock banners
+  const autoLockBanners = document.getElementById("autoLockBanners");
+  autoLockBanners.innerHTML = "";
+  const soonLocked = matches.filter(m => {
+    if (globalLocked || !m.kickoffUtcMs) return false;
+    const mins = (m.kickoffUtcMs - Date.now()) / 60000;
+    return mins > 0 && mins <= 60;
+  });
+  if (soonLocked.length > 0) {
+    const banner = document.createElement("div");
+    banner.className = "bg-yellow-900/30 border border-yellow-500/40 rounded-2xl p-4 flex items-center gap-3";
+    banner.innerHTML = `<span class="text-2xl">⏰</span>
+      <div>
+        <div class="font-bold text-yellow-300 text-sm">Predictions closing soon</div>
+        <div class="text-yellow-400/70 text-xs mt-0.5">${soonLocked.map(m => `${m.home} vs ${m.away}`).join(", ")} — locks 30 min before kickoff</div>
+      </div>`;
+    autoLockBanners.appendChild(banner);
+  }
+
+  if (matches.length === 0) {
+    noMatchMsg.classList.remove("hidden");
+  } else {
+    noMatchMsg.classList.add("hidden");
+  }
+
+  matches.forEach(match => {
+    const locked      = isMatchLocked(match, globalLocked);
+    const actual      = results[match.id];
+    const hasResult   = actual && actual.home !== undefined;
+    const minsLeft    = match.kickoffUtcMs ? (match.kickoffUtcMs - Date.now()) / 60000 : null;
+
+    // ── PREDICT CARD ──
+    const card = document.createElement("div");
+    card.className = "glass rounded-2xl p-6 match-card";
+
+    let statusBadge = "";
+    if (hasResult) {
+      statusBadge = `<span class="badge-completed px-2.5 py-0.5 rounded-full text-xs font-medium">Full Time</span>`;
+    } else if (minsLeft !== null && minsLeft <= 0) {
+      statusBadge = `<span class="badge-live px-2.5 py-0.5 rounded-full text-xs font-medium">Live / Ended</span>`;
+    } else if (locked) {
+      statusBadge = `<span class="auto-lock-indicator">🔒 Locked</span>`;
+    } else if (minsLeft !== null && minsLeft <= 60) {
+      const minsInt = Math.max(0, Math.floor(minsLeft));
+      statusBadge = `<span class="auto-lock-indicator">⏳ Locks in ~${minsInt} min</span>`;
+    }
+
+    card.innerHTML = `
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${match.stage === 'Knockout' ? 'badge-knockout' : 'badge-group'}">${match.stage}</span>
+          ${statusBadge}
+        </div>
+        <span class="text-xs text-slate-400">📅 ${formatLocalTime(match.kickoffUtcMs)}</span>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-1 text-right">
+          <div class="text-xl font-bold">${match.home}</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="number" min="0" ${locked ? "disabled" : ""} id="home-${match.id}"
+            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+          <div class="display-font text-2xl text-yellow-400">:</div>
+          <input type="number" min="0" ${locked ? "disabled" : ""} id="away-${match.id}"
+            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+        </div>
+        <div class="flex-1 text-left">
+          <div class="text-xl font-bold">${match.away}</div>
+        </div>
+      </div>
+      ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
+        Final: ${match.home} ${actual.home} – ${actual.away} ${match.away}
+      </div>` : ""}
+    `;
+    container.appendChild(card);
+
+    // ── ADMIN RESULT CARD ──
+    const adminCard = document.createElement("div");
+    adminCard.className = "bg-slate-800/50 border border-slate-700 rounded-xl p-4";
+    adminCard.innerHTML = `
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div>
+          <div class="font-bold">${match.home} vs ${match.away}</div>
+          <div class="text-xs text-slate-500 mt-0.5">
+            ${formatLocalTime(match.kickoffUtcMs)} · ${match.stage}
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="number" min="0" id="actual-home-${match.id}"
+            value="${actual?.home ?? ""}"
+            class="w-16 h-11 rounded-lg bg-slate-700 border border-slate-600 text-center focus:outline-none focus:border-yellow-500 transition" />
+          <span class="text-yellow-400 font-bold display-font text-xl">:</span>
+          <input type="number" min="0" id="actual-away-${match.id}"
+            value="${actual?.away ?? ""}"
+            class="w-16 h-11 rounded-lg bg-slate-700 border border-slate-600 text-center focus:outline-none focus:border-yellow-500 transition" />
+          <button class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm transition"
+            data-id="${match.id}">
+            Save
+          </button>
+          <button class="delete-result-btn bg-slate-700 hover:bg-red-700 border border-slate-600 hover:border-red-600 px-3 py-2 rounded-lg text-sm transition" title="Delete result"
+            data-id="${match.id}">
+            🗑
+          </button>
+        </div>
+      </div>
+    `;
+    adminCont.appendChild(adminCard);
+  });
+
+  // Save result event listeners
+  document.querySelectorAll(".save-result-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id   = btn.dataset.id;
+      const home = document.getElementById(`actual-home-${id}`).value;
+      const away = document.getElementById(`actual-away-${id}`).value;
+      if (home === "" || away === "") { alert("Enter both scores."); return; }
+      btn.textContent = "Saving…";
+      await setDoc(doc(db, "results", id), { home: Number(home), away: Number(away) });
+      btn.textContent = "Saved ✓";
+      setTimeout(() => { btn.textContent = "Save"; }, 2000);
+      calculateLeaderboard();
+    });
+  });
+
+  // Delete result event listeners
+  document.querySelectorAll(".delete-result-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const matchEl = document.querySelector(`#actual-home-${id}`)?.closest(".bg-slate-800\\/50");
+      const matchName = matchEl?.querySelector(".font-bold")?.textContent || "this match";
+      showConfirm(
+        "Delete Result",
+        `Remove the saved result for ${matchName.trim()}? The match will remain but scoring will be undone.`,
+        async () => {
+          await deleteDoc(doc(db, "results", id));
+          renderMatches();
+          renderResultsTab();
+          calculateLeaderboard();
+        }
+      );
+    });
+  });
+
+  updateLockStatusLabel();
+}
+
+// ─── ADD MATCH ────────────────────────────────────────────────
+document.getElementById("addMatchBtn").addEventListener("click", async () => {
+  const home    = document.getElementById("homeTeam").value.trim();
+  const away    = document.getElementById("awayTeam").value.trim();
+  const kickoff = document.getElementById("kickoff").value;   // "YYYY-MM-DDTHH:mm" in AEST
+  const stage   = document.getElementById("stage").value;
+
+  if (!home || !away || !kickoff) { alert("Please fill all fields."); return; }
+
+  const kickoffUtcMs = aestLocalToUtcMs(kickoff);
+
+  await addDoc(collection(db, "matches"), {
+    home, away, stage,
+    kickoffUtcMs,
+    kickoffAEST: kickoff,
+    createdAt: Date.now()
+  });
+
+  document.getElementById("homeTeam").value  = "";
+  document.getElementById("awayTeam").value  = "";
+  document.getElementById("kickoff").value   = "";
+  alert(`Match added. Kickoff: ${formatAEST(kickoffUtcMs)} AEST`);
+});
+
+// ─── LOCK ─────────────────────────────────────────────────────
+async function updateLockStatusLabel() {
+  const locked = await getLockStatus();
+  const el = document.getElementById("lockStatus");
+  if (el) el.textContent = locked ? "Status: 🔒 Locked" : "Status: 🔓 Open";
+}
+
+document.getElementById("toggleLockBtn").addEventListener("click", async () => {
+  const locked = await getLockStatus();
+  await setLockStatus(!locked);
+  renderMatches();
+});
+
+// ─── SAVE PREDICTIONS ─────────────────────────────────────────
+document.getElementById("savePredictionsBtn").addEventListener("click", async () => {
+  const globalLocked = await getLockStatus();
+  const userName     = document.getElementById("userName").value.trim();
+  if (!userName) { alert("Please enter your name."); return; }
+
+  const matches     = await getMatches();
+  const predictions = {};
+  let skippedCount  = 0;
+
+  matches.forEach(match => {
+    const locked = isMatchLocked(match, globalLocked);
+    if (locked) { skippedCount++; return; }
+
+    const home = document.getElementById(`home-${match.id}`)?.value;
+    const away = document.getElementById(`away-${match.id}`)?.value;
+    predictions[match.id] = {
+      home: home === "" ? null : Number(home),
+      away: away === "" ? null : Number(away)
+    };
+  });
+
+  if (Object.keys(predictions).length === 0 && skippedCount > 0) {
+    alert("All predictions are currently locked. No changes saved.");
+    return;
+  }
+
+  // Merge with existing predictions so locked matches aren't overwritten
+  const existingDoc = await getDoc(doc(db, "predictions", userName));
+  const existingPreds = existingDoc.exists() ? (existingDoc.data().predictions || {}) : {};
+
+  await setDoc(doc(db, "predictions", userName), {
+    user: userName,
+    predictions: { ...existingPreds, ...predictions },
+    updatedAt: Date.now()
+  });
+
+  calculateLeaderboard();
+  alert(skippedCount > 0
+    ? `Saved! (${skippedCount} locked matches were not changed.)`
+    : "Predictions saved! ✓");
+});
+
+// ─── LEADERBOARD ──────────────────────────────────────────────
+async function calculateLeaderboard() {
+  const matches      = await getMatches();
+  const results      = await getResults();
+  const predSnapshot = await getDocs(collection(db, "predictions"));
+
+  const leaderboard = [];
+
+  predSnapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    let totalPoints = 0, correctScores = 0, correctOutcomes = 0;
+
+    matches.forEach(match => {
+      const prediction = data.predictions?.[match.id];
+      const actual     = results[match.id];
+      if (!prediction || actual === undefined || actual.home === undefined) return;
+
+      const multiplier = match.stage === "Knockout" ? 1.5 : 1;
+
+      if (prediction.home === actual.home && prediction.away === actual.away) {
+        totalPoints  += 3 * multiplier;
+        correctScores++;
+        return;
+      }
+
+      if (getOutcome(prediction.home, prediction.away) === getOutcome(actual.home, actual.away)) {
+        totalPoints    += 1 * multiplier;
+        correctOutcomes++;
+      }
+    });
+
+    leaderboard.push({ user: data.user, correctScores, correctOutcomes, totalPoints });
+  });
+
+  leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
+  renderLeaderboard(leaderboard);
+}
+
+function renderLeaderboard(leaderboard) {
+  const tbody = document.getElementById("leaderboardBody");
+  const noMsg = document.getElementById("noLeaderboardMsg");
+  tbody.innerHTML = "";
+
+  if (leaderboard.length === 0) {
+    noMsg.classList.remove("hidden");
+    return;
+  }
+  noMsg.classList.add("hidden");
+
+  leaderboard.forEach((entry, index) => {
+    const rank = index + 1;
+    const rankClass = rank === 1 ? "rank-gold" : rank === 2 ? "rank-silver" : rank === 3 ? "rank-bronze" : "";
+    const rankEmoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
+
+    const row = document.createElement("tr");
+    row.className = "border-b border-slate-800 hover:bg-white/3 transition";
+    row.innerHTML = `
+      <td class="py-4 px-3 font-bold display-font text-lg ${rankClass}">${rankEmoji}</td>
+      <td class="py-4 px-3 font-medium">${entry.user}</td>
+      <td class="py-4 px-3 text-slate-300">${entry.correctScores}</td>
+      <td class="py-4 px-3 text-slate-300">${entry.correctOutcomes}</td>
+      <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${entry.totalPoints % 1 === 0 ? entry.totalPoints : entry.totalPoints.toFixed(1)}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// ─── TABS ─────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.remove("tab-active");
+      b.classList.add("bg-slate-800");
+    });
+    btn.classList.add("tab-active");
+    btn.classList.remove("bg-slate-800");
+
+    document.querySelectorAll(".tab-content").forEach(tab => tab.classList.add("hidden"));
+    document.getElementById(btn.dataset.tab).classList.remove("hidden");
+
+    if (btn.dataset.tab === "resultsTab")     renderResultsTab();
+    if (btn.dataset.tab === "leaderboardTab") calculateLeaderboard();
+  });
+});
+
+// ─── AUTO-LOCK TIMER ──────────────────────────────────────────
+// Re-render every minute so auto-lock badges update
+setInterval(() => {
+  const activeTab = document.querySelector(".tab-content:not(.hidden)");
+  if (activeTab?.id === "predictTab") renderMatches();
+}, 60 * 1000);
+
+// ─── REALTIME LISTENERS ───────────────────────────────────────
+onSnapshot(collection(db, "matches"), async () => {
+  renderMatches();
+  calculateLeaderboard();
+});
+onSnapshot(collection(db, "predictions"), async () => {
+  calculateLeaderboard();
+});
+onSnapshot(collection(db, "results"), async () => {
+  renderMatches();
+  renderResultsTab();
+  calculateLeaderboard();
+});
+
+// ─── CONFIRM MODAL ───────────────────────────────────────────
+let _modalCallback = null;
+
+function showConfirm(title, body, onConfirm) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").textContent  = body;
+  _modalCallback = onConfirm;
+  const modal = document.getElementById("confirmModal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+
+function hideConfirm() {
+  const modal = document.getElementById("confirmModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+  _modalCallback = null;
+}
+
+document.getElementById("modalCancel").addEventListener("click", hideConfirm);
+document.getElementById("confirmModal").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) hideConfirm();
+});
+document.getElementById("modalConfirm").addEventListener("click", async () => {
+  const btn = document.getElementById("modalConfirm");
+  btn.textContent = "Deleting…";
+  btn.disabled = true;
+  try {
+    if (_modalCallback) await _modalCallback();
+  } finally {
+    btn.textContent = "Yes, Delete";
+    btn.disabled = false;
+    hideConfirm();
+  }
+});
+
+// ─── RESET HELPERS ────────────────────────────────────────────
+async function deleteCollection(collectionName) {
+  const snap = await getDocs(collection(db, collectionName));
+  const deletes = snap.docs.map(d => deleteDoc(doc(db, collectionName, d.id)));
+  await Promise.all(deletes);
+}
+
+document.getElementById("resetPredictionsBtn").addEventListener("click", () => {
+  showConfirm(
+    "Clear All Predictions",
+    "This will permanently delete every player's predictions. Match list and results will remain. This cannot be undone.",
+    async () => {
+      await deleteCollection("predictions");
+      renderMatches();
+      calculateLeaderboard();
+    }
+  );
+});
+
+document.getElementById("resetAllBtn").addEventListener("click", () => {
+  showConfirm(
+    "Reset Entire Game",
+    "This will permanently delete ALL matches, results, and predictions. The game will be completely reset. This cannot be undone.",
+    async () => {
+      await Promise.all([
+        deleteCollection("matches"),
+        deleteCollection("results"),
+        deleteCollection("predictions"),
+      ]);
+      renderMatches();
+      renderResultsTab();
+      calculateLeaderboard();
+    }
+  );
+});
+
+// ─── INIT ─────────────────────────────────────────────────────
+renderMatches();
+calculateLeaderboard();
+
+</script>
+</body>
+</html>
