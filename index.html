@@ -1,348 +1,91 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2026 FIFA World Cup Prediction Game</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>World Cup Prediction Game</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body {
-      background:
-        radial-gradient(circle at top, rgba(34,197,94,0.12), transparent 30%),
-        linear-gradient(to bottom, #08111f, #0f172a);
-    }
+<style>
+body {
+  background: radial-gradient(circle at top, rgba(34,197,94,0.15), transparent 30%),
+  linear-gradient(to bottom, #08111f, #0f172a);
+}
 
-    .glass {
-      background: rgba(15, 23, 42, 0.78);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
+.glass {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
 
-    .tab-active {
-      background: linear-gradient(to right, #facc15, #f59e0b);
-      color: black;
-      font-weight: bold;
-    }
-
-    .score-input::-webkit-inner-spin-button,
-    .score-input::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    .score-input {
-      -moz-appearance: textfield;
-    }
-  </style>
-
+.tab-active {
+  background: linear-gradient(to right, #facc15, #f59e0b);
+  color: black;
+  font-weight: bold;
+}
+</style>
 </head>
 
-<body class="min-h-screen text-white">
+<body class="text-white min-h-screen">
 
-  <!-- HEADER -->
+<header class="p-5 flex gap-2 flex-wrap">
+  <button class="tab-btn tab-active px-4 py-2 bg-slate-800 rounded" data-tab="predict">Predict</button>
+  <button class="tab-btn px-4 py-2 bg-slate-800 rounded" data-tab="leaderboard">Leaderboard</button>
+  <button class="tab-btn px-4 py-2 bg-slate-800 rounded" data-tab="rules">Rules</button>
+  <button class="tab-btn px-4 py-2 bg-slate-800 rounded" data-tab="results">Results</button>
+</header>
 
-  <header class="sticky top-0 z-50 bg-black/30 backdrop-blur border-b border-white/10">
+<main class="p-5">
 
-```
-<div class="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<!-- PREDICT -->
+<section id="predict" class="tab">
 
-  <div>
-    <h1 class="text-3xl font-extrabold text-yellow-400">
-      ⚽ 2026 FIFA World Cup Prediction Game
-    </h1>
-
-    <p class="text-slate-300 text-sm mt-1">
-      Real-Time Firebase Edition
-    </p>
-  </div>
-
-  <div class="flex flex-wrap gap-2">
-
-    <button class="tab-btn tab-active px-4 py-2 rounded-xl bg-slate-800" data-tab="predictTab">
-      Predict Matches
-    </button>
-
-    <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700" data-tab="leaderboardTab">
-      Leaderboard
-    </button>
-
-    <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700" data-tab="rulesTab">
-      Rules & Scoring
-    </button>
-
-  </div>
-
+<div id="lockBanner" class="hidden bg-red-600 p-3 rounded mb-4">
+🔒 Predictions locked (match starting soon or admin locked)
 </div>
-```
 
-  </header>
+<input id="user" placeholder="Your Name" class="p-2 text-black rounded mb-4"/>
 
-  <main class="max-w-7xl mx-auto p-4 md:p-6">
+<div id="matches"></div>
 
-```
-<!-- PREDICT TAB -->
-<section id="predictTab" class="tab-content">
+<button id="save" class="bg-yellow-400 text-black px-4 py-2 mt-4 rounded">
+Save Predictions
+</button>
 
-  <div class="glass rounded-2xl p-5 mb-6">
+</section>
 
-    <div class="flex flex-col md:flex-row gap-4 items-end">
-
-      <div class="flex-1">
-        <label class="block text-sm text-slate-300 mb-2">
-          User Name
-        </label>
-
-        <input
-          type="text"
-          id="userName"
-          placeholder="Enter your name"
-          class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
-        />
-      </div>
-
-      <button
-        id="savePredictionsBtn"
-        class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-3 rounded-xl"
-      >
-        Save Predictions
-      </button>
-
-    </div>
-
-  </div>
-
-  <div
-    id="lockBanner"
-    class="hidden bg-red-700 border border-red-500 rounded-2xl p-4 mb-6"
-  >
-    🔒 Predictions are locked by the administrator.
-  </div>
-
-  <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
-
+<!-- RESULTS TAB -->
+<section id="results" class="tab hidden">
+<h2 class="text-xl mb-4 text-yellow-400">Completed Matches</h2>
+<div id="resultsContainer"></div>
 </section>
 
 <!-- LEADERBOARD -->
-<section id="leaderboardTab" class="tab-content hidden">
-
-  <div class="glass rounded-2xl p-6">
-
-    <h2 class="text-2xl font-bold text-yellow-400 mb-5">
-      🏆 Leaderboard
-    </h2>
-
-    <div class="overflow-x-auto">
-
-      <table class="w-full text-left">
-
-        <thead>
-          <tr class="border-b border-slate-700 text-slate-300">
-            <th class="py-3 px-3">Rank</th>
-            <th class="py-3 px-3">User</th>
-            <th class="py-3 px-3">Correct Scores</th>
-            <th class="py-3 px-3">Correct Outcomes</th>
-            <th class="py-3 px-3">Points</th>
-          </tr>
-        </thead>
-
-        <tbody id="leaderboardBody"></tbody>
-
-      </table>
-
-    </div>
-
-  </div>
-
+<section id="leaderboard" class="tab hidden">
+<h2 class="text-xl mb-4 text-yellow-400">Leaderboard</h2>
+<div id="board"></div>
 </section>
 
 <!-- RULES -->
-<section id="rulesTab" class="tab-content hidden">
-
-  <div class="glass rounded-2xl p-6 space-y-5">
-
-    <h2 class="text-2xl font-bold text-yellow-400">
-      📘 Rules & Scoring
-    </h2>
-
-    <div class="space-y-3 text-slate-200">
-      <p>✅ Exact Score = <span class="text-yellow-400 font-bold">3 Points</span></p>
-      <p>✅ Correct Winner/Draw = <span class="text-yellow-400 font-bold">1 Point</span></p>
-      <p>❌ Wrong Prediction = <span class="text-yellow-400 font-bold">0 Points</span></p>
-      <p>🔥 Knockout Stage = <span class="text-yellow-400 font-bold">1.5x Multiplier</span></p>
-    </div>
-
-  </div>
-
+<section id="rules" class="tab hidden">
+<p>3 pts exact, 1 pt outcome, 1.5x knockout multiplier.</p>
 </section>
 
-<!-- ADMIN -->
-<section class="mt-10">
+</main>
 
-  <div class="glass rounded-2xl overflow-hidden">
+<script type="module">
 
-    <button
-      id="adminToggle"
-      class="w-full text-left bg-red-700 hover:bg-red-600 px-6 py-4 font-bold"
-    >
-      🔒 Admin Dashboard
-    </button>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    <!-- LOGIN -->
-    <div id="adminLogin" class="p-6 border-t border-slate-700">
+import {
+getAuth, signInWithEmailAndPassword, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-      <div class="max-w-md">
-
-        <label class="block text-sm text-slate-300 mb-2">
-          Admin Password
-        </label>
-
-        <div class="flex gap-3">
-
-          <input
-            type="password"
-            id="adminPassword"
-            placeholder="Enter admin password"
-            class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
-          />
-
-          <button
-            id="loginBtn"
-            class="bg-yellow-400 hover:bg-yellow-300 text-black px-5 py-3 rounded-xl font-bold"
-          >
-            Login
-          </button>
-
-        </div>
-
-        <p class="text-xs text-slate-500 mt-3">
-          Default Password: admin123
-        </p>
-
-      </div>
-
-    </div>
-
-    <!-- PANEL -->
-    <div id="adminPanel" class="hidden p-6 space-y-8">
-
-      <!-- LOCK -->
-      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-          <div>
-            <h3 class="text-xl font-bold text-yellow-400">
-              🔒 Prediction Lock Control
-            </h3>
-
-            <p class="text-slate-400 mt-1 text-sm">
-              Prevent users from editing predictions.
-            </p>
-          </div>
-
-          <button
-            id="toggleLockBtn"
-            class="bg-red-600 hover:bg-red-500 px-5 py-3 rounded-xl font-bold"
-          >
-            Lock Predictions
-          </button>
-
-        </div>
-
-      </div>
-
-      <!-- ADD MATCH -->
-      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-        <h3 class="text-xl font-bold text-yellow-400 mb-5">
-          ➕ Add Match
-        </h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-          <input
-            type="text"
-            id="homeTeam"
-            placeholder="Home Team"
-            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-          />
-
-          <input
-            type="text"
-            id="awayTeam"
-            placeholder="Away Team"
-            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-          />
-
-          <input
-            type="text"
-            id="kickoff"
-            placeholder="Kickoff Time"
-            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-          />
-
-          <select
-            id="stage"
-            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-          >
-            <option value="Group">Group Stage</option>
-            <option value="Knockout">Knockout Stage</option>
-          </select>
-
-        </div>
-
-        <button
-          id="addMatchBtn"
-          class="mt-5 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold"
-        >
-          Add Match
-        </button>
-
-      </div>
-
-      <!-- RESULTS -->
-      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-        <h3 class="text-xl font-bold text-yellow-400 mb-5">
-          🧮 Enter Actual Results
-        </h3>
-
-        <div id="adminMatches" class="space-y-4"></div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-```
-
-  </main>
-
-  <!-- FIREBASE -->
-
-  <script type="module">
-
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      getDocs,
-      doc,
-      setDoc,
-      getDoc,
-      onSnapshot
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    // =====================================
-    // FIREBASE CONFIG
-    // =====================================
+/* ================= FIREBASE ================= */
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
@@ -353,610 +96,188 @@ const firebaseConfig = {
   appId: "1:791400320278:web:7faed774a893dc7c399437"
 };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-    // =====================================
-    // CONFIG
-    // =====================================
+/* ================= TIME HELPERS ================= */
 
-    const ADMIN_PASSWORD = "admin123";
+// Convert AEST/AEDT stored time → user local time
+function toLocalTime(ausTimeString) {
+  const ausTime = new Date(ausTimeString); // stored ISO (Sydney time)
+  return new Date(ausTime.getTime());
+}
 
-    // =====================================
-    // HELPERS
-    // =====================================
+// Convert kickoff string (Sydney time input) to ISO
+function toSydneyISO(localInput) {
+  // interpret input as Sydney time
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(new Date(localInput).getTime() - offset).toISOString();
+}
 
-    function getOutcome(home, away) {
+// lock rule: 30 min before kickoff
+function isLocked(kickoffISO) {
+  const now = new Date();
+  const kickoff = new Date(kickoffISO);
+  return now > new Date(kickoff.getTime() - 30 * 60000);
+}
 
-      if (home > away) return "HOME";
-      if (away > home) return "AWAY";
+/* ================= LOAD MATCHES ================= */
 
-      return "DRAW";
-    }
+async function loadMatches() {
+const snap = await getDocs(collection(db,"matches"));
+const matches = [];
 
-    async function getMatches() {
+snap.forEach(d => matches.push({id:d.id,...d.data()}));
 
-      const snapshot = await getDocs(
-        collection(db, "matches")
-      );
+render(matches);
+renderResults(matches);
+calculateBoard(matches);
+}
 
-      const matches = [];
+/* ================= RENDER MATCHES ================= */
 
-      snapshot.forEach(docSnap => {
+function render(matches) {
 
-        matches.push({
-          id: docSnap.id,
-          ...docSnap.data()
-        });
+const container = document.getElementById("matches");
+container.innerHTML = "";
 
-      });
+matches.forEach(m => {
 
-      return matches;
-    }
+const locked = isLocked(m.kickoff);
 
-    async function getResults() {
+const localKickoff = new Date(m.kickoff).toLocaleString();
 
-      const snapshot = await getDocs(
-        collection(db, "results")
-      );
+container.innerHTML += `
+<div class="glass p-4 mb-3 rounded">
 
-      const results = {};
+<div class="flex justify-between">
+<span>${m.home} vs ${m.away}</span>
+<span>${m.stage}</span>
+</div>
 
-      snapshot.forEach(docSnap => {
+<div class="text-sm text-gray-300 mt-2">
+Kickoff (your time): ${localKickoff}
+</div>
 
-        results[docSnap.id] = docSnap.data();
+<div class="mt-3 flex gap-2">
+<input id="h-${m.id}" type="number" ${locked?'disabled':''} class="text-black p-1 rounded w-16"/>
+<span>:</span>
+<input id="a-${m.id}" type="number" ${locked?'disabled':''} class="text-black p-1 rounded w-16"/>
+</div>
 
-      });
+</div>
+`;
 
-      return results;
-    }
+});
 
-    // =====================================
-    // LOCK STATUS
-    // =====================================
+}
 
-    async function getLockStatus() {
+/* ================= RESULTS TAB ================= */
 
-      const lockRef = doc(db, "settings", "predictionLock");
+function renderResults(matches){
 
-      const lockDoc = await getDoc(lockRef);
+const box = document.getElementById("resultsContainer");
+box.innerHTML = "";
 
-      if (!lockDoc.exists()) {
-        return false;
-      }
+matches.forEach(m => {
 
-      return lockDoc.data().locked;
-    }
+if(!m.result) return;
 
-    async function setLockStatus(value) {
+box.innerHTML += `
+<div class="glass p-3 mb-2 rounded">
+${m.home} ${m.result.home} - ${m.result.away} ${m.away}
+</div>
+`;
 
-      await setDoc(
-        doc(db, "settings", "predictionLock"),
-        {
-          locked: value
-        }
-      );
-    }
+});
 
-    // =====================================
-    // RENDER MATCHES
-    // =====================================
+}
 
-    async function renderMatches() {
+/* ================= SAVE ================= */
 
-      const matches = await getMatches();
-      const results = await getResults();
-      const locked = await getLockStatus();
+document.getElementById("save").onclick = async () => {
 
-      const container =
-        document.getElementById("matchesContainer");
+const user = document.getElementById("user").value;
 
-      const adminContainer =
-        document.getElementById("adminMatches");
+const matchesSnap = await getDocs(collection(db,"matches"));
 
-      container.innerHTML = "";
-      adminContainer.innerHTML = "";
+const data = {};
 
-      document.getElementById("lockBanner")
-        .classList.toggle("hidden", !locked);
+matchesSnap.forEach(m => {
 
-      if (matches.length === 0) {
+data[m.id] = {
+home: Number(document.getElementById("h-"+m.id)?.value),
+away: Number(document.getElementById("a-"+m.id)?.value)
+};
 
-        container.innerHTML = `
-          <div class="glass rounded-2xl p-10 text-center col-span-full">
-            <div class="text-5xl mb-4">⚽</div>
-            <h2 class="text-2xl font-bold text-yellow-400 mb-2">
-              No Matches Added Yet
-            </h2>
-          </div>
-        `;
+});
 
-        return;
-      }
+await setDoc(doc(db,"predictions",user), {
+user,
+data
+});
 
-      matches.forEach(match => {
+alert("Saved");
 
-        // USER CARD
+};
 
-        const card = document.createElement("div");
+/* ================= LEADERBOARD ================= */
 
-        card.className = "glass rounded-2xl p-6";
+async function calculateBoard(matches){
 
-        card.innerHTML = `
+const snap = await getDocs(collection(db,"predictions"));
 
-          <div class="flex justify-between items-center mb-5">
+let board = [];
 
-            <span class="bg-green-600 px-3 py-1 rounded-full text-xs uppercase">
-              ${match.stage}
-            </span>
+snap.forEach(s => {
 
-            <span class="text-sm text-slate-300">
-              ⏳ ${match.kickoff}
-            </span>
+const d = s.data();
 
-          </div>
+let score = 0;
 
-          <div class="flex items-center justify-between gap-4">
+matches.forEach(m => {
 
-            <div class="w-1/3 text-center">
-              <div class="text-xl font-bold">${match.home}</div>
-            </div>
+if(!m.result || !d.data[m.id]) return;
 
-            <div class="flex items-center gap-3">
+const p = d.data[m.id];
+const r = m.result;
 
-              <input
-                type="number"
-                min="0"
-                ${locked ? "disabled" : ""}
-                id="home-${match.id}"
-                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl"
-              />
+if(p.home==r.home && p.away==r.away) score += 3;
+else if((p.home>p.away)==(r.home>r.away)) score += 1;
 
-              <div class="text-2xl font-bold text-yellow-400">:</div>
+});
 
-              <input
-                type="number"
-                min="0"
-                ${locked ? "disabled" : ""}
-                id="away-${match.id}"
-                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl"
-              />
+board.push({user:d.user,score});
 
-            </div>
+});
 
-            <div class="w-1/3 text-center">
-              <div class="text-xl font-bold">${match.away}</div>
-            </div>
+board.sort((a,b)=>b.score-a.score);
 
-          </div>
+document.getElementById("board").innerHTML =
+board.map((b,i)=>`<div>${i+1}. ${b.user} - ${b.score}</div>`).join("");
 
-        `;
+}
 
-        container.appendChild(card);
+/* ================= TABS ================= */
 
-        // ADMIN CARD
+document.querySelectorAll(".tab-btn").forEach(b=>{
+b.onclick=()=>{
+document.querySelectorAll(".tab").forEach(t=>t.classList.add("hidden"));
+document.getElementById(b.dataset.tab).classList.remove("hidden");
+};
+});
 
-        const actual = results[match.id] || {};
+/* ================= AUTO REFRESH ================= */
 
-        const adminCard = document.createElement("div");
+onSnapshot(collection(db,"matches"), loadMatches);
+onSnapshot(collection(db,"predictions"), loadMatches);
+onSnapshot(collection(db,"results"), loadMatches);
 
-        adminCard.className =
-          "border border-slate-700 rounded-xl p-4";
+loadMatches();
 
-        adminCard.innerHTML = `
+</script>
 
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-
-            <div>
-              <div class="font-bold">
-                ${match.home} vs ${match.away}
-              </div>
-
-              <div class="text-sm text-slate-400 mt-1">
-                ${match.stage}
-              </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-
-              <input
-                type="number"
-                min="0"
-                id="actual-home-${match.id}"
-                value="${actual.home ?? ""}"
-                class="w-16 h-12 rounded-lg bg-slate-800 border border-slate-600 text-center"
-              />
-
-              <span class="text-yellow-400 font-bold">:</span>
-
-              <input
-                type="number"
-                min="0"
-                id="actual-away-${match.id}"
-                value="${actual.away ?? ""}"
-                class="w-16 h-12 rounded-lg bg-slate-800 border border-slate-600 text-center"
-              />
-
-              <button
-                class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold"
-                data-id="${match.id}"
-              >
-                Save
-              </button>
-
-            </div>
-
-          </div>
-
-        `;
-
-        adminContainer.appendChild(adminCard);
-
-      });
-
-      document.querySelectorAll(".save-result-btn")
-        .forEach(btn => {
-
-          btn.addEventListener("click", async () => {
-
-            const id = btn.dataset.id;
-
-            const home =
-              document.getElementById(`actual-home-${id}`).value;
-
-            const away =
-              document.getElementById(`actual-away-${id}`).value;
-
-            if (home === "" || away === "") {
-              alert("Please enter both scores.");
-              return;
-            }
-
-            await setDoc(
-              doc(db, "results", id),
-              {
-                home: Number(home),
-                away: Number(away)
-              }
-            );
-
-            await calculateLeaderboard();
-
-            alert("Result saved.");
-
-          });
-
-        });
-
-    }
-
-    // =====================================
-    // ADD MATCH
-    // =====================================
-
-    document.getElementById("addMatchBtn")
-      .addEventListener("click", async () => {
-
-        const home =
-          document.getElementById("homeTeam").value.trim();
-
-        const away =
-          document.getElementById("awayTeam").value.trim();
-
-        const kickoff =
-          document.getElementById("kickoff").value.trim();
-
-        const stage =
-          document.getElementById("stage").value;
-
-        if (!home || !away || !kickoff) {
-          alert("Please fill all fields.");
-          return;
-        }
-
-        await addDoc(
-          collection(db, "matches"),
-          {
-            home,
-            away,
-            kickoff,
-            stage,
-            createdAt: Date.now()
-          }
-        );
-
-        document.getElementById("homeTeam").value = "";
-        document.getElementById("awayTeam").value = "";
-        document.getElementById("kickoff").value = "";
-
-        alert("Match added.");
-
-      });
-
-    // =====================================
-    // SAVE PREDICTIONS
-    // =====================================
-
-    document.getElementById("savePredictionsBtn")
-      .addEventListener("click", async () => {
-
-        const locked = await getLockStatus();
-
-        if (locked) {
-          alert("Predictions are locked.");
-          return;
-        }
-
-        const userName =
-          document.getElementById("userName").value.trim();
-
-        if (!userName) {
-          alert("Please enter your name.");
-          return;
-        }
-
-        const matches = await getMatches();
-
-        const predictions = {};
-
-        matches.forEach(match => {
-
-          const home =
-            document.getElementById(`home-${match.id}`).value;
-
-          const away =
-            document.getElementById(`away-${match.id}`).value;
-
-          predictions[match.id] = {
-            home: home === "" ? null : Number(home),
-            away: away === "" ? null : Number(away)
-          };
-
-        });
-
-        await setDoc(
-          doc(db, "predictions", userName),
-          {
-            user: userName,
-            predictions,
-            updatedAt: Date.now()
-          }
-        );
-
-        await calculateLeaderboard();
-
-        alert("Predictions saved.");
-
-      });
-
-    // =====================================
-    // LEADERBOARD
-    // =====================================
-
-    async function calculateLeaderboard() {
-
-      const matches = await getMatches();
-      const results = await getResults();
-
-      const predictionSnapshot = await getDocs(
-        collection(db, "predictions")
-      );
-
-      const leaderboard = [];
-
-      predictionSnapshot.forEach(docSnap => {
-
-        const data = docSnap.data();
-
-        let totalPoints = 0;
-        let correctScores = 0;
-        let correctOutcomes = 0;
-
-        matches.forEach(match => {
-
-          const prediction = data.predictions[match.id];
-          const actual = results[match.id];
-
-          if (!prediction || !actual) return;
-
-          if (
-            prediction.home === null ||
-            prediction.away === null
-          ) {
-            return;
-          }
-
-          const multiplier =
-            match.stage === "Knockout"
-              ? 1.5
-              : 1;
-
-          // EXACT
-
-          if (
-            prediction.home === actual.home &&
-            prediction.away === actual.away
-          ) {
-
-            totalPoints += 3 * multiplier;
-            correctScores++;
-
-            return;
-          }
-
-          // OUTCOME
-
-          const predictedOutcome =
-            getOutcome(prediction.home, prediction.away);
-
-          const actualOutcome =
-            getOutcome(actual.home, actual.away);
-
-          if (predictedOutcome === actualOutcome) {
-
-            totalPoints += 1 * multiplier;
-            correctOutcomes++;
-
-          }
-
-        });
-
-        leaderboard.push({
-          user: data.user,
-          correctScores,
-          correctOutcomes,
-          totalPoints
-        });
-
-      });
-
-      leaderboard.sort((a, b) =>
-        b.totalPoints - a.totalPoints
-      );
-
-      renderLeaderboard(leaderboard);
-
-    }
-
-    function renderLeaderboard(leaderboard) {
-
-      const tbody =
-        document.getElementById("leaderboardBody");
-
-      tbody.innerHTML = "";
-
-      if (leaderboard.length === 0) {
-
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="5" class="text-center py-8 text-slate-400">
-              No leaderboard data available.
-            </td>
-          </tr>
-        `;
-
-        return;
-      }
-
-      leaderboard.forEach((entry, index) => {
-
-        const row = document.createElement("tr");
-
-        row.className =
-          "border-b border-slate-800 hover:bg-slate-800/40";
-
-        row.innerHTML = `
-          <td class="py-4 px-3 font-bold">${index + 1}</td>
-          <td class="py-4 px-3">${entry.user}</td>
-          <td class="py-4 px-3">${entry.correctScores}</td>
-          <td class="py-4 px-3">${entry.correctOutcomes}</td>
-          <td class="py-4 px-3 text-yellow-400 font-bold">${entry.totalPoints}</td>
-        `;
-
-        tbody.appendChild(row);
-
-      });
-
-    }
-
-    // =====================================
-    // ADMIN LOGIN
-    // =====================================
-
-    document.getElementById("loginBtn")
-      .addEventListener("click", () => {
-
-        const password =
-          document.getElementById("adminPassword").value;
-
-        if (password !== ADMIN_PASSWORD) {
-          alert("Incorrect password.");
-          return;
-        }
-
-        document.getElementById("adminPanel")
-          .classList.remove("hidden");
-
-        document.getElementById("adminLogin")
-          .classList.add("hidden");
-
-      });
-
-    // =====================================
-    // LOCK PREDICTIONS
-    // =====================================
-
-    document.getElementById("toggleLockBtn")
-      .addEventListener("click", async () => {
-
-        const locked = await getLockStatus();
-
-        await setLockStatus(!locked);
-
-        await renderMatches();
-
-      });
-
-    // =====================================
-    // TABS
-    // =====================================
-
-    document.querySelectorAll(".tab-btn")
-      .forEach(btn => {
-
-        btn.addEventListener("click", () => {
-
-          document.querySelectorAll(".tab-btn")
-            .forEach(b => b.classList.remove("tab-active"));
-
-          btn.classList.add("tab-active");
-
-          document.querySelectorAll(".tab-content")
-            .forEach(tab => tab.classList.add("hidden"));
-
-          document.getElementById(btn.dataset.tab)
-            .classList.remove("hidden");
-
-        });
-
-      });
-
-    // =====================================
-    // ADMIN TOGGLE
-    // =====================================
-
-    document.getElementById("adminToggle")
-      .addEventListener("click", () => {
-
-        document.getElementById("adminLogin")
-          .classList.toggle("hidden");
-
-      });
-
-    // =====================================
-    // REALTIME LISTENERS
-    // =====================================
-
-    onSnapshot(collection(db, "matches"), async () => {
-      await renderMatches();
-      await calculateLeaderboard();
-    });
-
-    onSnapshot(collection(db, "predictions"), async () => {
-      await calculateLeaderboard();
-    });
-
-    onSnapshot(collection(db, "results"), async () => {
-      await calculateLeaderboard();
-    });
-
-    // =====================================
-    // INIT
-    // =====================================
-
-    renderMatches();
-    calculateLeaderboard();
-
-  </script>
 </body>
 </html>
