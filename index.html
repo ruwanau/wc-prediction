@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>2026 FIFA World Cup Prediction Game</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -10,7 +11,7 @@
   <style>
     body {
       background:
-        radial-gradient(circle at top, rgba(34,197,94,0.15), transparent 30%),
+        radial-gradient(circle at top, rgba(34,197,94,0.12), transparent 30%),
         linear-gradient(to bottom, #08111f, #0f172a);
     }
 
@@ -36,417 +37,428 @@
       -moz-appearance: textfield;
     }
   </style>
+
 </head>
 
 <body class="min-h-screen text-white">
 
   <!-- HEADER -->
+
   <header class="sticky top-0 z-50 bg-black/30 backdrop-blur border-b border-white/10">
-    <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-      <div>
-        <h1 class="text-3xl font-extrabold text-yellow-400">
-          ⚽ 2026 FIFA World Cup Prediction Game
-        </h1>
+```
+<div class="max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-        <p class="text-slate-300 text-sm mt-1">
-          Dynamic Prediction Pool
-        </p>
-      </div>
+  <div>
+    <h1 class="text-3xl font-extrabold text-yellow-400">
+      ⚽ 2026 FIFA World Cup Prediction Game
+    </h1>
 
-      <div class="flex flex-wrap gap-2">
+    <p class="text-slate-300 text-sm mt-1">
+      Real-Time Firebase Edition
+    </p>
+  </div>
 
-        <button
-          class="tab-btn tab-active px-4 py-2 rounded-xl bg-slate-800"
-          data-tab="predictTab"
-        >
-          Predict Matches
-        </button>
+  <div class="flex flex-wrap gap-2">
 
-        <button
-          class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
-          data-tab="leaderboardTab"
-        >
-          Leaderboard
-        </button>
+    <button class="tab-btn tab-active px-4 py-2 rounded-xl bg-slate-800" data-tab="predictTab">
+      Predict Matches
+    </button>
 
-        <button
-          class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
-          data-tab="rulesTab"
-        >
-          Rules & Scoring
-        </button>
+    <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700" data-tab="leaderboardTab">
+      Leaderboard
+    </button>
 
-      </div>
+    <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700" data-tab="rulesTab">
+      Rules & Scoring
+    </button>
 
-    </div>
+  </div>
+
+</div>
+```
+
   </header>
 
   <main class="max-w-7xl mx-auto p-4 md:p-6">
 
-    <!-- PREDICTION TAB -->
-    <section id="predictTab" class="tab-content">
+```
+<!-- PREDICT TAB -->
+<section id="predictTab" class="tab-content">
 
-      <div class="glass rounded-2xl p-5 mb-6">
+  <div class="glass rounded-2xl p-5 mb-6">
 
-        <div class="flex flex-col md:flex-row gap-4 items-end">
+    <div class="flex flex-col md:flex-row gap-4 items-end">
 
-          <div class="flex-1">
+      <div class="flex-1">
+        <label class="block text-sm text-slate-300 mb-2">
+          User Name
+        </label>
 
-            <label class="block text-sm text-slate-300 mb-2">
-              User Name
-            </label>
+        <input
+          type="text"
+          id="userName"
+          placeholder="Enter your name"
+          class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+        />
+      </div>
 
-            <input
-              type="text"
-              id="userName"
-              placeholder="Enter your name"
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
-            />
+      <button
+        id="savePredictionsBtn"
+        class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-3 rounded-xl"
+      >
+        Save Predictions
+      </button>
 
+    </div>
+
+  </div>
+
+  <div
+    id="lockBanner"
+    class="hidden bg-red-700 border border-red-500 rounded-2xl p-4 mb-6"
+  >
+    🔒 Predictions are locked by the administrator.
+  </div>
+
+  <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+
+</section>
+
+<!-- LEADERBOARD -->
+<section id="leaderboardTab" class="tab-content hidden">
+
+  <div class="glass rounded-2xl p-6">
+
+    <h2 class="text-2xl font-bold text-yellow-400 mb-5">
+      🏆 Leaderboard
+    </h2>
+
+    <div class="overflow-x-auto">
+
+      <table class="w-full text-left">
+
+        <thead>
+          <tr class="border-b border-slate-700 text-slate-300">
+            <th class="py-3 px-3">Rank</th>
+            <th class="py-3 px-3">User</th>
+            <th class="py-3 px-3">Correct Scores</th>
+            <th class="py-3 px-3">Correct Outcomes</th>
+            <th class="py-3 px-3">Points</th>
+          </tr>
+        </thead>
+
+        <tbody id="leaderboardBody"></tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- RULES -->
+<section id="rulesTab" class="tab-content hidden">
+
+  <div class="glass rounded-2xl p-6 space-y-5">
+
+    <h2 class="text-2xl font-bold text-yellow-400">
+      📘 Rules & Scoring
+    </h2>
+
+    <div class="space-y-3 text-slate-200">
+      <p>✅ Exact Score = <span class="text-yellow-400 font-bold">3 Points</span></p>
+      <p>✅ Correct Winner/Draw = <span class="text-yellow-400 font-bold">1 Point</span></p>
+      <p>❌ Wrong Prediction = <span class="text-yellow-400 font-bold">0 Points</span></p>
+      <p>🔥 Knockout Stage = <span class="text-yellow-400 font-bold">1.5x Multiplier</span></p>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ADMIN -->
+<section class="mt-10">
+
+  <div class="glass rounded-2xl overflow-hidden">
+
+    <button
+      id="adminToggle"
+      class="w-full text-left bg-red-700 hover:bg-red-600 px-6 py-4 font-bold"
+    >
+      🔒 Admin Dashboard
+    </button>
+
+    <!-- LOGIN -->
+    <div id="adminLogin" class="p-6 border-t border-slate-700">
+
+      <div class="max-w-md">
+
+        <label class="block text-sm text-slate-300 mb-2">
+          Admin Password
+        </label>
+
+        <div class="flex gap-3">
+
+          <input
+            type="password"
+            id="adminPassword"
+            placeholder="Enter admin password"
+            class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
+          />
+
+          <button
+            id="loginBtn"
+            class="bg-yellow-400 hover:bg-yellow-300 text-black px-5 py-3 rounded-xl font-bold"
+          >
+            Login
+          </button>
+
+        </div>
+
+        <p class="text-xs text-slate-500 mt-3">
+          Default Password: admin123
+        </p>
+
+      </div>
+
+    </div>
+
+    <!-- PANEL -->
+    <div id="adminPanel" class="hidden p-6 space-y-8">
+
+      <!-- LOCK -->
+      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+          <div>
+            <h3 class="text-xl font-bold text-yellow-400">
+              🔒 Prediction Lock Control
+            </h3>
+
+            <p class="text-slate-400 mt-1 text-sm">
+              Prevent users from editing predictions.
+            </p>
           </div>
 
           <button
-            id="savePredictionsBtn"
-            class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-6 py-3 rounded-xl"
+            id="toggleLockBtn"
+            class="bg-red-600 hover:bg-red-500 px-5 py-3 rounded-xl font-bold"
           >
-            Save Predictions
+            Lock Predictions
           </button>
 
         </div>
 
       </div>
 
-      <!-- LOCK MESSAGE -->
-      <div
-        id="lockBanner"
-        class="hidden bg-red-700 border border-red-500 rounded-2xl p-4 mb-6"
-      >
-        🔒 Predictions are locked by the administrator.
-      </div>
+      <!-- ADD MATCH -->
+      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
 
-      <!-- MATCHES -->
-      <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+        <h3 class="text-xl font-bold text-yellow-400 mb-5">
+          ➕ Add Match
+        </h3>
 
-    </section>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
-    <!-- LEADERBOARD -->
-    <section id="leaderboardTab" class="tab-content hidden">
+          <input
+            type="text"
+            id="homeTeam"
+            placeholder="Home Team"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
+          />
 
-      <div class="glass rounded-2xl p-6">
+          <input
+            type="text"
+            id="awayTeam"
+            placeholder="Away Team"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
+          />
 
-        <div class="flex justify-between items-center mb-5">
+          <input
+            type="text"
+            id="kickoff"
+            placeholder="Kickoff Time"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
+          />
 
-          <h2 class="text-2xl font-bold text-yellow-400">
-            🏆 Leaderboard
-          </h2>
-
-          <button
-            onclick="refreshLeaderboard()"
-            class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl"
+          <select
+            id="stage"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
           >
-            Refresh
-          </button>
+            <option value="Group">Group Stage</option>
+            <option value="Knockout">Knockout Stage</option>
+          </select>
 
         </div>
-
-        <div class="overflow-x-auto">
-
-          <table class="w-full text-left">
-
-            <thead>
-              <tr class="border-b border-slate-700 text-slate-300">
-                <th class="py-3 px-3">Rank</th>
-                <th class="py-3 px-3">User</th>
-                <th class="py-3 px-3">Correct Scores</th>
-                <th class="py-3 px-3">Correct Outcomes</th>
-                <th class="py-3 px-3">Points</th>
-              </tr>
-            </thead>
-
-            <tbody id="leaderboardBody"></tbody>
-
-          </table>
-
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- RULES -->
-    <section id="rulesTab" class="tab-content hidden">
-
-      <div class="glass rounded-2xl p-6 space-y-5">
-
-        <h2 class="text-2xl font-bold text-yellow-400">
-          📘 Rules & Scoring
-        </h2>
-
-        <div class="space-y-3 text-slate-200">
-          <p>✅ Exact Score = <span class="text-yellow-400 font-bold">3 Points</span></p>
-          <p>✅ Correct Winner/Draw = <span class="text-yellow-400 font-bold">1 Point</span></p>
-          <p>❌ Wrong Prediction = <span class="text-yellow-400 font-bold">0 Points</span></p>
-          <p>🔥 Knockout Stage = <span class="text-yellow-400 font-bold">1.5x Multiplier</span></p>
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- ADMIN -->
-    <section class="mt-10">
-
-      <div class="glass rounded-2xl overflow-hidden">
 
         <button
-          id="adminToggle"
-          class="w-full text-left bg-red-700 hover:bg-red-600 px-6 py-4 font-bold"
+          id="addMatchBtn"
+          class="mt-5 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold"
         >
-          🔒 Admin Dashboard
+          Add Match
         </button>
-
-        <!-- LOGIN -->
-        <div id="adminLogin" class="p-6 border-t border-slate-700">
-
-          <div class="max-w-md">
-
-            <label class="block text-sm text-slate-300 mb-2">
-              Admin Password
-            </label>
-
-            <div class="flex gap-3">
-
-              <input
-                type="password"
-                id="adminPassword"
-                placeholder="Enter admin password"
-                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3"
-              />
-
-              <button
-                id="loginBtn"
-                class="bg-yellow-400 hover:bg-yellow-300 text-black px-5 py-3 rounded-xl font-bold"
-              >
-                Login
-              </button>
-
-            </div>
-
-            <p class="text-xs text-slate-500 mt-3">
-              Default Password: admin123
-            </p>
-
-          </div>
-
-        </div>
-
-        <!-- PANEL -->
-        <div id="adminPanel" class="hidden p-6 space-y-8">
-
-          <!-- LOCK -->
-          <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-              <div>
-                <h3 class="text-xl font-bold text-yellow-400">
-                  🔒 Prediction Lock Control
-                </h3>
-
-                <p class="text-slate-400 mt-1 text-sm">
-                  Prevent users from editing or saving predictions.
-                </p>
-              </div>
-
-              <button
-                id="toggleLockBtn"
-                class="bg-red-600 hover:bg-red-500 px-5 py-3 rounded-xl font-bold"
-              >
-                Lock Predictions
-              </button>
-
-            </div>
-
-          </div>
-
-          <!-- ADD MATCH -->
-          <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-            <h3 class="text-xl font-bold text-yellow-400 mb-5">
-              ➕ Add Match
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-              <input
-                type="text"
-                id="homeTeam"
-                placeholder="Home Team"
-                class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-              />
-
-              <input
-                type="text"
-                id="awayTeam"
-                placeholder="Away Team"
-                class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-              />
-
-              <input
-                type="text"
-                id="kickoff"
-                placeholder="Kickoff Time"
-                class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-              />
-
-              <select
-                id="stage"
-                class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3"
-              >
-                <option value="Group">Group Stage</option>
-                <option value="Knockout">Knockout Stage</option>
-              </select>
-
-            </div>
-
-            <button
-              id="addMatchBtn"
-              class="mt-5 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold"
-            >
-              Add Match
-            </button>
-
-          </div>
-
-          <!-- RESULTS -->
-          <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-            <h3 class="text-xl font-bold text-yellow-400 mb-5">
-              🧮 Enter Actual Results
-            </h3>
-
-            <div id="adminMatches" class="space-y-4"></div>
-
-          </div>
-
-          <!-- ACTIONS -->
-          <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
-
-            <h3 class="text-xl font-bold text-red-400 mb-5">
-              ⚠ Admin Actions
-            </h3>
-
-            <div class="flex flex-wrap gap-4">
-
-              <button
-                id="recalculateBtn"
-                class="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-xl font-bold"
-              >
-                Recalculate Scores
-              </button>
-
-              <button
-                id="resetBtn"
-                class="bg-red-600 hover:bg-red-500 px-5 py-3 rounded-xl font-bold"
-              >
-                Reset Pool
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
 
       </div>
 
-    </section>
+      <!-- RESULTS -->
+      <div class="bg-slate-900 rounded-2xl p-5 border border-slate-700">
+
+        <h3 class="text-xl font-bold text-yellow-400 mb-5">
+          🧮 Enter Actual Results
+        </h3>
+
+        <div id="adminMatches" class="space-y-4"></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+```
 
   </main>
 
-  <script>
+  <!-- FIREBASE -->
 
-    // =========================
+  <script type="module">
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      doc,
+      setDoc,
+      getDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // =====================================
+    // FIREBASE CONFIG
+    // =====================================
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // =====================================
     // CONFIG
-    // =========================
+    // =====================================
 
     const ADMIN_PASSWORD = "admin123";
 
-    // =========================
-    // STORAGE HELPERS
-    // =========================
+    // =====================================
+    // HELPERS
+    // =====================================
 
-    function getMatches() {
-      return JSON.parse(localStorage.getItem("wc_matches") || "[]");
+    function getOutcome(home, away) {
+
+      if (home > away) return "HOME";
+      if (away > home) return "AWAY";
+
+      return "DRAW";
     }
 
-    function saveMatches(matches) {
-      localStorage.setItem("wc_matches", JSON.stringify(matches));
+    async function getMatches() {
+
+      const snapshot = await getDocs(
+        collection(db, "matches")
+      );
+
+      const matches = [];
+
+      snapshot.forEach(docSnap => {
+
+        matches.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        });
+
+      });
+
+      return matches;
     }
 
-    function getPredictions() {
-      return JSON.parse(localStorage.getItem("wc_predictions") || "{}");
+    async function getResults() {
+
+      const snapshot = await getDocs(
+        collection(db, "results")
+      );
+
+      const results = {};
+
+      snapshot.forEach(docSnap => {
+
+        results[docSnap.id] = docSnap.data();
+
+      });
+
+      return results;
     }
 
-    function savePredictionsData(data) {
-      localStorage.setItem("wc_predictions", JSON.stringify(data));
+    // =====================================
+    // LOCK STATUS
+    // =====================================
+
+    async function getLockStatus() {
+
+      const lockRef = doc(db, "settings", "predictionLock");
+
+      const lockDoc = await getDoc(lockRef);
+
+      if (!lockDoc.exists()) {
+        return false;
+      }
+
+      return lockDoc.data().locked;
     }
 
-    function getResults() {
-      return JSON.parse(localStorage.getItem("wc_results") || "{}");
+    async function setLockStatus(value) {
+
+      await setDoc(
+        doc(db, "settings", "predictionLock"),
+        {
+          locked: value
+        }
+      );
     }
 
-    function saveResults(data) {
-      localStorage.setItem("wc_results", JSON.stringify(data));
-    }
-
-    function getLeaderboardData() {
-      return JSON.parse(localStorage.getItem("wc_leaderboard") || "[]");
-    }
-
-    function saveLeaderboardData(data) {
-      localStorage.setItem("wc_leaderboard", JSON.stringify(data));
-    }
-
-    function isPredictionLocked() {
-      return localStorage.getItem("wc_prediction_locked") === "true";
-    }
-
-    function setPredictionLock(value) {
-      localStorage.setItem("wc_prediction_locked", value);
-    }
-
-    // =========================
+    // =====================================
     // RENDER MATCHES
-    // =========================
+    // =====================================
 
-    function renderMatches() {
+    async function renderMatches() {
 
-      const matches = getMatches();
+      const matches = await getMatches();
+      const results = await getResults();
+      const locked = await getLockStatus();
 
-      const container = document.getElementById("matchesContainer");
-      const adminContainer = document.getElementById("adminMatches");
+      const container =
+        document.getElementById("matchesContainer");
+
+      const adminContainer =
+        document.getElementById("adminMatches");
 
       container.innerHTML = "";
       adminContainer.innerHTML = "";
 
-      const locked = isPredictionLocked();
-
-      // LOCK BANNER
-
       document.getElementById("lockBanner")
         .classList.toggle("hidden", !locked);
-
-      document.getElementById("savePredictionsBtn").disabled = locked;
-
-      if (locked) {
-        document.getElementById("savePredictionsBtn")
-          .classList.add("opacity-50", "cursor-not-allowed");
-      } else {
-        document.getElementById("savePredictionsBtn")
-          .classList.remove("opacity-50", "cursor-not-allowed");
-      }
 
       if (matches.length === 0) {
 
@@ -456,16 +468,11 @@
             <h2 class="text-2xl font-bold text-yellow-400 mb-2">
               No Matches Added Yet
             </h2>
-            <p class="text-slate-400">
-              Admin can add matches from the dashboard.
-            </p>
           </div>
         `;
 
         return;
       }
-
-      const results = getResults();
 
       matches.forEach(match => {
 
@@ -476,6 +483,7 @@
         card.className = "glass rounded-2xl p-6";
 
         card.innerHTML = `
+
           <div class="flex justify-between items-center mb-5">
 
             <span class="bg-green-600 px-3 py-1 rounded-full text-xs uppercase">
@@ -501,7 +509,7 @@
                 min="0"
                 ${locked ? "disabled" : ""}
                 id="home-${match.id}"
-                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl disabled:opacity-50"
+                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl"
               />
 
               <div class="text-2xl font-bold text-yellow-400">:</div>
@@ -511,7 +519,7 @@
                 min="0"
                 ${locked ? "disabled" : ""}
                 id="away-${match.id}"
-                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl disabled:opacity-50"
+                class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl"
               />
 
             </div>
@@ -521,6 +529,7 @@
             </div>
 
           </div>
+
         `;
 
         container.appendChild(card);
@@ -531,9 +540,11 @@
 
         const adminCard = document.createElement("div");
 
-        adminCard.className = "border border-slate-700 rounded-xl p-4";
+        adminCard.className =
+          "border border-slate-700 rounded-xl p-4";
 
         adminCard.innerHTML = `
+
           <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
             <div>
@@ -567,8 +578,8 @@
               />
 
               <button
-                onclick="saveActualResult(${match.id})"
-                class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold"
+                class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold"
+                data-id="${match.id}"
               >
                 Save
               </button>
@@ -576,69 +587,55 @@
             </div>
 
           </div>
+
         `;
 
         adminContainer.appendChild(adminCard);
 
       });
 
-      updateLockButton();
+      document.querySelectorAll(".save-result-btn")
+        .forEach(btn => {
+
+          btn.addEventListener("click", async () => {
+
+            const id = btn.dataset.id;
+
+            const home =
+              document.getElementById(`actual-home-${id}`).value;
+
+            const away =
+              document.getElementById(`actual-away-${id}`).value;
+
+            if (home === "" || away === "") {
+              alert("Please enter both scores.");
+              return;
+            }
+
+            await setDoc(
+              doc(db, "results", id),
+              {
+                home: Number(home),
+                away: Number(away)
+              }
+            );
+
+            await calculateLeaderboard();
+
+            alert("Result saved.");
+
+          });
+
+        });
 
     }
 
-    // =========================
-    // LOCK BUTTON UI
-    // =========================
-
-    function updateLockButton() {
-
-      const btn = document.getElementById("toggleLockBtn");
-
-      if (isPredictionLocked()) {
-
-        btn.innerText = "Unlock Predictions";
-        btn.classList.remove("bg-red-600");
-        btn.classList.add("bg-green-600");
-
-      } else {
-
-        btn.innerText = "Lock Predictions";
-        btn.classList.remove("bg-green-600");
-        btn.classList.add("bg-red-600");
-
-      }
-
-    }
-
-    // =========================
-    // ADMIN LOGIN
-    // =========================
-
-    document.getElementById("loginBtn")
-      .addEventListener("click", () => {
-
-        const password =
-          document.getElementById("adminPassword").value;
-
-        if (password !== ADMIN_PASSWORD) {
-          alert("Incorrect password.");
-          return;
-        }
-
-        document.getElementById("adminPanel")
-          .classList.remove("hidden");
-
-        document.getElementById("adminLogin")
-          .classList.add("hidden");
-
-      });
-
-    // =========================
+    // =====================================
     // ADD MATCH
-    // =========================
+    // =====================================
 
     document.getElementById("addMatchBtn")
-      .addEventListener("click", () => {
+      .addEventListener("click", async () => {
 
         const home =
           document.getElementById("homeTeam").value.trim();
@@ -657,51 +654,35 @@
           return;
         }
 
-        const matches = getMatches();
-
-        matches.push({
-          id: Date.now(),
-          home,
-          away,
-          kickoff,
-          stage
-        });
-
-        saveMatches(matches);
-
-        renderMatches();
+        await addDoc(
+          collection(db, "matches"),
+          {
+            home,
+            away,
+            kickoff,
+            stage,
+            createdAt: Date.now()
+          }
+        );
 
         document.getElementById("homeTeam").value = "";
         document.getElementById("awayTeam").value = "";
         document.getElementById("kickoff").value = "";
 
-        alert("Match added successfully.");
+        alert("Match added.");
 
       });
 
-    // =========================
-    // LOCK TOGGLE
-    // =========================
-
-    document.getElementById("toggleLockBtn")
-      .addEventListener("click", () => {
-
-        const locked = isPredictionLocked();
-
-        setPredictionLock(!locked);
-
-        renderMatches();
-
-      });
-
-    // =========================
+    // =====================================
     // SAVE PREDICTIONS
-    // =========================
+    // =====================================
 
     document.getElementById("savePredictionsBtn")
-      .addEventListener("click", () => {
+      .addEventListener("click", async () => {
 
-        if (isPredictionLocked()) {
+        const locked = await getLockStatus();
+
+        if (locked) {
           alert("Predictions are locked.");
           return;
         }
@@ -714,11 +695,9 @@
           return;
         }
 
-        const matches = getMatches();
+        const matches = await getMatches();
 
-        const predictions = getPredictions();
-
-        predictions[userName] = {};
+        const predictions = {};
 
         matches.forEach(match => {
 
@@ -728,79 +707,46 @@
           const away =
             document.getElementById(`away-${match.id}`).value;
 
-          predictions[userName][match.id] = {
+          predictions[match.id] = {
             home: home === "" ? null : Number(home),
             away: away === "" ? null : Number(away)
           };
 
         });
 
-        savePredictionsData(predictions);
+        await setDoc(
+          doc(db, "predictions", userName),
+          {
+            user: userName,
+            predictions,
+            updatedAt: Date.now()
+          }
+        );
 
-        calculateLeaderboard();
+        await calculateLeaderboard();
 
         alert("Predictions saved.");
 
       });
 
-    // =========================
-    // SAVE ACTUAL RESULT
-    // =========================
+    // =====================================
+    // LEADERBOARD
+    // =====================================
 
-    function saveActualResult(matchId) {
+    async function calculateLeaderboard() {
 
-      const home =
-        document.getElementById(`actual-home-${matchId}`).value;
+      const matches = await getMatches();
+      const results = await getResults();
 
-      const away =
-        document.getElementById(`actual-away-${matchId}`).value;
-
-      if (home === "" || away === "") {
-        alert("Please enter both scores.");
-        return;
-      }
-
-      const results = getResults();
-
-      results[matchId] = {
-        home: Number(home),
-        away: Number(away)
-      };
-
-      saveResults(results);
-
-      calculateLeaderboard();
-
-      alert("Result saved.");
-
-    }
-
-    // =========================
-    // OUTCOME HELPER
-    // =========================
-
-    function getOutcome(home, away) {
-
-      if (home > away) return "HOME";
-      if (away > home) return "AWAY";
-
-      return "DRAW";
-
-    }
-
-    // =========================
-    // LEADERBOARD CALCULATION
-    // =========================
-
-    function calculateLeaderboard() {
-
-      const matches = getMatches();
-      const predictions = getPredictions();
-      const results = getResults();
+      const predictionSnapshot = await getDocs(
+        collection(db, "predictions")
+      );
 
       const leaderboard = [];
 
-      Object.keys(predictions).forEach(user => {
+      predictionSnapshot.forEach(docSnap => {
+
+        const data = docSnap.data();
 
         let totalPoints = 0;
         let correctScores = 0;
@@ -808,7 +754,7 @@
 
         matches.forEach(match => {
 
-          const prediction = predictions[user][match.id];
+          const prediction = data.predictions[match.id];
           const actual = results[match.id];
 
           if (!prediction || !actual) return;
@@ -856,7 +802,7 @@
         });
 
         leaderboard.push({
-          user,
+          user: data.user,
           correctScores,
           correctOutcomes,
           totalPoints
@@ -864,21 +810,15 @@
 
       });
 
-      leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
+      leaderboard.sort((a, b) =>
+        b.totalPoints - a.totalPoints
+      );
 
-      saveLeaderboardData(leaderboard);
-
-      refreshLeaderboard();
+      renderLeaderboard(leaderboard);
 
     }
 
-    // =========================
-    // REFRESH LEADERBOARD
-    // =========================
-
-    function refreshLeaderboard() {
-
-      const leaderboard = getLeaderboardData();
+    function renderLeaderboard(leaderboard) {
 
       const tbody =
         document.getElementById("leaderboardBody");
@@ -919,62 +859,47 @@
 
     }
 
-    // =========================
-    // RESET
-    // =========================
+    // =====================================
+    // ADMIN LOGIN
+    // =====================================
 
-    document.getElementById("resetBtn")
+    document.getElementById("loginBtn")
       .addEventListener("click", () => {
 
-        const confirmed = confirm(
-          "Reset all matches, results, predictions and leaderboard?"
-        );
+        const password =
+          document.getElementById("adminPassword").value;
 
-        if (!confirmed) return;
+        if (password !== ADMIN_PASSWORD) {
+          alert("Incorrect password.");
+          return;
+        }
 
-        localStorage.removeItem("wc_matches");
-        localStorage.removeItem("wc_predictions");
-        localStorage.removeItem("wc_results");
-        localStorage.removeItem("wc_leaderboard");
-        localStorage.removeItem("wc_prediction_locked");
+        document.getElementById("adminPanel")
+          .classList.remove("hidden");
 
-        renderMatches();
-        refreshLeaderboard();
-
-        alert("Pool reset completed.");
+        document.getElementById("adminLogin")
+          .classList.add("hidden");
 
       });
 
-    // =========================
-    // RECALCULATE
-    // =========================
+    // =====================================
+    // LOCK PREDICTIONS
+    // =====================================
 
-    document.getElementById("recalculateBtn")
-      .addEventListener("click", () => {
+    document.getElementById("toggleLockBtn")
+      .addEventListener("click", async () => {
 
-        calculateLeaderboard();
+        const locked = await getLockStatus();
 
-        alert("Scores recalculated.");
+        await setLockStatus(!locked);
 
-      });
-
-    // =========================
-    // ADMIN TOGGLE
-    // =========================
-
-    document.getElementById("adminToggle")
-      .addEventListener("click", () => {
-
-        const login =
-          document.getElementById("adminLogin");
-
-        login.classList.toggle("hidden");
+        await renderMatches();
 
       });
 
-    // =========================
+    // =====================================
     // TABS
-    // =========================
+    // =====================================
 
     document.querySelectorAll(".tab-btn")
       .forEach(btn => {
@@ -982,9 +907,7 @@
         btn.addEventListener("click", () => {
 
           document.querySelectorAll(".tab-btn")
-            .forEach(b => {
-              b.classList.remove("tab-active");
-            });
+            .forEach(b => b.classList.remove("tab-active"));
 
           btn.classList.add("tab-active");
 
@@ -998,12 +921,41 @@
 
       });
 
-    // =========================
+    // =====================================
+    // ADMIN TOGGLE
+    // =====================================
+
+    document.getElementById("adminToggle")
+      .addEventListener("click", () => {
+
+        document.getElementById("adminLogin")
+          .classList.toggle("hidden");
+
+      });
+
+    // =====================================
+    // REALTIME LISTENERS
+    // =====================================
+
+    onSnapshot(collection(db, "matches"), async () => {
+      await renderMatches();
+      await calculateLeaderboard();
+    });
+
+    onSnapshot(collection(db, "predictions"), async () => {
+      await calculateLeaderboard();
+    });
+
+    onSnapshot(collection(db, "results"), async () => {
+      await calculateLeaderboard();
+    });
+
+    // =====================================
     // INIT
-    // =========================
+    // =====================================
 
     renderMatches();
-    refreshLeaderboard();
+    calculateLeaderboard();
 
   </script>
 <script type="module">
