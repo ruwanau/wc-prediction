@@ -9,47 +9,46 @@
 
 <style>
 body {
-  background: radial-gradient(circle at top, rgba(34,197,94,0.15), transparent 30%),
-  linear-gradient(to bottom, #08111f, #0f172a);
+  background: linear-gradient(to bottom, #07111f, #0f172a);
 }
-
 .glass {
-  background: rgba(15, 23, 42, 0.78);
-  backdrop-filter: blur(12px);
+  background: rgba(15,23,42,0.75);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.08);
 }
-
 .tab-active {
-  background: linear-gradient(to right, #facc15, #f59e0b);
+  background: #facc15;
   color: black;
   font-weight: bold;
 }
 </style>
 </head>
 
-<body class="text-white min-h-screen">
+<body class="text-white">
 
-<header class="p-5 flex gap-2 flex-wrap">
-  <button class="tab-btn tab-active px-4 py-2 bg-slate-800 rounded" data-tab="predict">Predict</button>
-  <button class="tab-btn px-4 py-2 bg-slate-800 rounded" data-tab="leaderboard">Leaderboard</button>
-  <button class="tab-btn px-4 py-2 bg-slate-800 rounded" data-tab="rules">Rules</button>
-  <button class="tab-btn px-4 py-2 bg-slate-800 rounded" data-tab="results">Results</button>
+<header class="p-4 border-b border-white/10 flex justify-between">
+  <h1 class="text-xl font-bold text-yellow-400">⚽ World Cup Predictor</h1>
+
+  <div class="flex gap-2">
+    <button class="tab-btn tab-active px-3 py-2" data-tab="predict">Predict</button>
+    <button class="tab-btn px-3 py-2" data-tab="leaderboard">Leaderboard</button>
+    <button class="tab-btn px-3 py-2" data-tab="results">Results</button>
+    <button class="tab-btn px-3 py-2" data-tab="admin">Admin</button>
+  </div>
 </header>
 
-<main class="p-5">
+<main class="p-4">
 
 <!-- PREDICT -->
 <section id="predict" class="tab">
 
-<div id="lockBanner" class="hidden bg-red-600 p-3 rounded mb-4">
-🔒 Predictions locked (match starting soon or admin locked)
+<div id="lockBanner" class="hidden bg-red-600 p-3 rounded mb-3">
+🔒 Predictions locked (closes 30 min before kickoff)
 </div>
-
-<input id="user" placeholder="Your Name" class="p-2 text-black rounded mb-4"/>
 
 <div id="matches"></div>
 
-<button id="save" class="bg-yellow-400 text-black px-4 py-2 mt-4 rounded">
+<button id="saveBtn" class="mt-4 bg-yellow-400 text-black px-4 py-2 rounded">
 Save Predictions
 </button>
 
@@ -57,19 +56,28 @@ Save Predictions
 
 <!-- RESULTS TAB -->
 <section id="results" class="tab hidden">
-<h2 class="text-xl mb-4 text-yellow-400">Completed Matches</h2>
-<div id="resultsContainer"></div>
+  <h2 class="text-xl mb-3 text-yellow-400">Completed Matches</h2>
+  <div id="resultsList"></div>
 </section>
 
 <!-- LEADERBOARD -->
 <section id="leaderboard" class="tab hidden">
-<h2 class="text-xl mb-4 text-yellow-400">Leaderboard</h2>
-<div id="board"></div>
+  <h2 class="text-xl text-yellow-400 mb-3">Leaderboard</h2>
+  <div id="board"></div>
 </section>
 
-<!-- RULES -->
-<section id="rules" class="tab hidden">
-<p>3 pts exact, 1 pt outcome, 1.5x knockout multiplier.</p>
+<!-- ADMIN -->
+<section id="admin" class="tab hidden">
+
+<div class="glass p-4 mb-4">
+  <input id="home" placeholder="Home" class="p-2 text-black"/>
+  <input id="away" placeholder="Away" class="p-2 text-black"/>
+  <input id="kickoff" placeholder="Kickoff (AEST YYYY-MM-DD HH:MM)" class="p-2 text-black"/>
+  <button id="addMatch" class="bg-green-500 px-3 py-2 mt-2">Add Match</button>
+</div>
+
+<div id="adminList"></div>
+
 </section>
 
 </main>
@@ -78,14 +86,15 @@ Save Predictions
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, onSnapshot
+getFirestore, collection, addDoc, getDocs,
+doc, setDoc, getDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
 getAuth, signInWithEmailAndPassword, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-/* ================= FIREBASE ================= */
+/* ---------------- FIREBASE ---------------- */
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
@@ -100,180 +109,146 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* ================= TIME HELPERS ================= */
+/* ---------------- TIME HELPERS ---------------- */
 
-// Convert AEST/AEDT stored time → user local time
-function toLocalTime(ausTimeString) {
-  const ausTime = new Date(ausTimeString); // stored ISO (Sydney time)
-  return new Date(ausTime.getTime());
+// Convert AEST input → UTC ISO
+function parseAESTtoUTC(str) {
+  // input: "2026-06-10 18:00" (AEST = UTC+10)
+  const [date, time] = str.split(" ");
+  const [y,m,d] = date.split("-");
+  const [hh,mm] = time.split(":");
+
+  const utc = new Date(Date.UTC(
+    Number(y),
+    Number(m)-1,
+    Number(d),
+    Number(hh)-10, // AEST offset
+    Number(mm)
+  ));
+
+  return utc;
 }
 
-// Convert kickoff string (Sydney time input) to ISO
-function toSydneyISO(localInput) {
-  // interpret input as Sydney time
+// Convert UTC → local display
+function toLocalTime(utc) {
+  return new Date(utc).toLocaleString();
+}
+
+/* ---------------- LOCK LOGIC ---------------- */
+
+async function isLocked(match) {
   const now = new Date();
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(new Date(localInput).getTime() - offset).toISOString();
+  const kickoff = new Date(match.kickoffUTC);
+
+  const diff = (kickoff - now) / 60000; // minutes
+
+  return diff <= 30; // auto lock 30 min before
 }
 
-// lock rule: 30 min before kickoff
-function isLocked(kickoffISO) {
-  const now = new Date();
-  const kickoff = new Date(kickoffISO);
-  return now > new Date(kickoff.getTime() - 30 * 60000);
-}
-
-/* ================= LOAD MATCHES ================= */
+/* ---------------- RENDER MATCHES ---------------- */
 
 async function loadMatches() {
-const snap = await getDocs(collection(db,"matches"));
-const matches = [];
+  const snap = await getDocs(collection(db,"matches"));
 
-snap.forEach(d => matches.push({id:d.id,...d.data()}));
+  const list = [];
+  snap.forEach(d => list.push({id:d.id,...d.data()}));
 
-render(matches);
-renderResults(matches);
-calculateBoard(matches);
+  const box = document.getElementById("matches");
+  const resultsBox = document.getElementById("resultsList");
+
+  box.innerHTML = "";
+  resultsBox.innerHTML = "";
+
+  for (const m of list) {
+
+    const locked = await isLocked(m);
+
+    /* ---------- PREDICTION CARD ---------- */
+
+    box.innerHTML += `
+      <div class="glass p-3 mb-3">
+        <div class="text-sm text-gray-300">${m.stage}</div>
+
+        <div class="font-bold text-lg">
+          ${m.home} vs ${m.away}
+        </div>
+
+        <div class="text-yellow-300 text-sm">
+          Kickoff (Local): ${toLocalTime(m.kickoffUTC)}
+        </div>
+
+        <input id="h-${m.id}" ${locked?"disabled":""} placeholder="H" class="text-black w-12"/>
+        :
+        <input id="a-${m.id}" ${locked?"disabled":""} placeholder="A" class="text-black w-12"/>
+      </div>
+    `;
+
+    /* ---------- RESULTS TAB (ONLY COMPLETED) ---------- */
+
+    if (m.result) {
+      resultsBox.innerHTML += `
+        <div class="glass p-3 mb-2">
+          <b>${m.home} ${m.result.home} - ${m.result.away} ${m.away}</b>
+          <div class="text-sm text-gray-300">
+            Completed
+          </div>
+        </div>
+      `;
+    }
+
+    /* ---------- ADMIN ---------- */
+
+    document.getElementById("adminList").innerHTML += `
+      <div class="glass p-3 mb-2">
+        ${m.home} vs ${m.away}
+
+        <input id="rh-${m.id}" class="text-black w-12"/>
+        :
+        <input id="ra-${m.id}" class="text-black w-12"/>
+
+        <button onclick="saveResult('${m.id}')"
+          class="bg-yellow-400 text-black px-2 py-1">
+          Save
+        </button>
+      </div>
+    `;
+  }
 }
 
-/* ================= RENDER MATCHES ================= */
+/* ---------------- ADD MATCH ---------------- */
 
-function render(matches) {
+document.getElementById("addMatch").onclick = async () => {
 
-const container = document.getElementById("matches");
-container.innerHTML = "";
+  const home = document.getElementById("home").value;
+  const away = document.getElementById("away").value;
+  const kickoff = document.getElementById("kickoff").value;
 
-matches.forEach(m => {
+  const utc = parseAESTtoUTC(kickoff);
 
-const locked = isLocked(m.kickoff);
-
-const localKickoff = new Date(m.kickoff).toLocaleString();
-
-container.innerHTML += `
-<div class="glass p-4 mb-3 rounded">
-
-<div class="flex justify-between">
-<span>${m.home} vs ${m.away}</span>
-<span>${m.stage}</span>
-</div>
-
-<div class="text-sm text-gray-300 mt-2">
-Kickoff (your time): ${localKickoff}
-</div>
-
-<div class="mt-3 flex gap-2">
-<input id="h-${m.id}" type="number" ${locked?'disabled':''} class="text-black p-1 rounded w-16"/>
-<span>:</span>
-<input id="a-${m.id}" type="number" ${locked?'disabled':''} class="text-black p-1 rounded w-16"/>
-</div>
-
-</div>
-`;
-
-});
-
-}
-
-/* ================= RESULTS TAB ================= */
-
-function renderResults(matches){
-
-const box = document.getElementById("resultsContainer");
-box.innerHTML = "";
-
-matches.forEach(m => {
-
-if(!m.result) return;
-
-box.innerHTML += `
-<div class="glass p-3 mb-2 rounded">
-${m.home} ${m.result.home} - ${m.result.away} ${m.away}
-</div>
-`;
-
-});
-
-}
-
-/* ================= SAVE ================= */
-
-document.getElementById("save").onclick = async () => {
-
-const user = document.getElementById("user").value;
-
-const matchesSnap = await getDocs(collection(db,"matches"));
-
-const data = {};
-
-matchesSnap.forEach(m => {
-
-data[m.id] = {
-home: Number(document.getElementById("h-"+m.id)?.value),
-away: Number(document.getElementById("a-"+m.id)?.value)
-};
-
-});
-
-await setDoc(doc(db,"predictions",user), {
-user,
-data
-});
-
-alert("Saved");
+  await addDoc(collection(db,"matches"), {
+    home,
+    away,
+    kickoffUTC: utc.toISOString(),
+    stage: "Group"
+  });
 
 };
 
-/* ================= LEADERBOARD ================= */
+/* ---------------- SAVE RESULT ---------------- */
 
-async function calculateBoard(matches){
+window.saveResult = async (id) => {
 
-const snap = await getDocs(collection(db,"predictions"));
+  const h = document.getElementById("rh-"+id).value;
+  const a = document.getElementById("ra-"+id).value;
 
-let board = [];
+  await setDoc(doc(db,"results",id),{
+    home:Number(h),
+    away:Number(a)
+  });
 
-snap.forEach(s => {
-
-const d = s.data();
-
-let score = 0;
-
-matches.forEach(m => {
-
-if(!m.result || !d.data[m.id]) return;
-
-const p = d.data[m.id];
-const r = m.result;
-
-if(p.home==r.home && p.away==r.away) score += 3;
-else if((p.home>p.away)==(r.home>r.away)) score += 1;
-
-});
-
-board.push({user:d.user,score});
-
-});
-
-board.sort((a,b)=>b.score-a.score);
-
-document.getElementById("board").innerHTML =
-board.map((b,i)=>`<div>${i+1}. ${b.user} - ${b.score}</div>`).join("");
-
-}
-
-/* ================= TABS ================= */
-
-document.querySelectorAll(".tab-btn").forEach(b=>{
-b.onclick=()=>{
-document.querySelectorAll(".tab").forEach(t=>t.classList.add("hidden"));
-document.getElementById(b.dataset.tab).classList.remove("hidden");
 };
-});
 
-/* ================= AUTO REFRESH ================= */
-
-onSnapshot(collection(db,"matches"), loadMatches);
-onSnapshot(collection(db,"predictions"), loadMatches);
-onSnapshot(collection(db,"results"), loadMatches);
+/* ---------------- INIT ---------------- */
 
 loadMatches();
 
