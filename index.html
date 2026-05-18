@@ -342,14 +342,15 @@
 
       <!-- Admin re-auth (if current user is not the admin) -->
       <div id="adminLoginSection" class="hidden p-6 border-t border-slate-700">
-        <p class="text-slate-400 text-sm mb-4">Enter admin credentials to access the dashboard.</p>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input type="email"    id="adminEmail"    placeholder="Admin Email"
+        <p class="text-slate-400 text-sm mb-4">Enter the admin email and password to access the dashboard.</p>
+        <div class="flex flex-col gap-3 max-w-md">
+          <input type="email" id="adminEmail" placeholder="Admin Email"
             class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
           <input type="password" id="adminPassword" placeholder="Admin Password"
             class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
+          <p id="adminLoginErr" class="text-red-400 text-sm hidden"></p>
           <button id="adminLoginBtn"
-            class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl transition">
+            class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl px-6 py-3 transition">
             Login as Admin
           </button>
         </div>
@@ -449,7 +450,8 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  fetchSignInMethodsForEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // ── CONFIG ────────────────────────────────────────────────────
@@ -462,14 +464,20 @@ const firebaseConfig = {
   appId: "1:791400320278:web:7faed774a893dc7c399437"
 };
 
-// ⬇ Set this to the Firebase Auth email of the admin account
-const ADMIN_EMAIL = "admin@wc2026.com";
-
 const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
 
-let currentUser = null;
+// Secondary app used to verify admin credentials without signing out the participant
+const adminVerifyApp  = initializeApp(firebaseConfig, "adminVerify");
+const adminVerifyAuth = getAuth(adminVerifyApp);
+
+let currentUser   = null;
+let adminUnlocked = false;  // set to true once admin credentials verified this session
+
+function isAdmin() {
+  return adminUnlocked;
+}
 
 // ── AUTH TAB SWITCH ───────────────────────────────────────────
 window.authTab = function(tab) {
@@ -556,22 +564,22 @@ onAuthStateChanged(auth, async user => {
     document.getElementById("authGate").classList.add("hidden");
     document.getElementById("appShell").classList.remove("hidden");
 
-    // Update UI
+    // Update header UI
     const initials = name.slice(0,2).toUpperCase();
     ["hdrAvatar","predAvatar"].forEach(id => document.getElementById(id).textContent = initials);
     document.getElementById("hdrName").textContent  = name;
     document.getElementById("predName").textContent = name;
     document.getElementById("hdrEmail").textContent = user.email;
 
-    // Admin panel
-    const isAdmin = user.email === ADMIN_EMAIL;
-    document.getElementById("adminPanel").classList.toggle("hidden", !isAdmin);
-    document.getElementById("adminLoginSection").classList.toggle("hidden", isAdmin);
-    if (isAdmin) updateLockLabel();
+    // Admin panel visibility based on adminUnlocked flag
+    document.getElementById("adminPanel").classList.toggle("hidden", !adminUnlocked);
+    document.getElementById("adminLoginSection").classList.toggle("hidden", adminUnlocked);
+    if (adminUnlocked) updateLockLabel();
 
     renderMatches();
     calculateLeaderboard();
   } else {
+    adminUnlocked = false;
     document.getElementById("authGate").classList.remove("hidden");
     document.getElementById("appShell").classList.add("hidden");
   }
@@ -583,18 +591,59 @@ document.getElementById("signOutBtn").addEventListener("click", () => signOut(au
 // ── ADMIN SECTION TOGGLE ──────────────────────────────────────
 let chevronOpen = false;
 document.getElementById("adminToggle").addEventListener("click", () => {
-  const isAdmin = currentUser?.email === ADMIN_EMAIL;
-  if (!isAdmin) document.getElementById("adminLoginSection").classList.toggle("hidden");
+  if (!adminUnlocked) {
+    document.getElementById("adminLoginSection").classList.toggle("hidden");
+  }
   chevronOpen = !chevronOpen;
   document.getElementById("adminChevron").style.transform = chevronOpen ? "rotate(180deg)" : "";
 });
 
-// Admin re-login button (re-authenticates as admin if a participant is logged in)
+// Admin login — verifies credentials using a secondary Auth instance so the
+// current participant session is never disturbed
 document.getElementById("adminLoginBtn").addEventListener("click", async () => {
-  const email = document.getElementById("adminEmail").value;
+  const email = document.getElementById("adminEmail").value.trim();
   const pass  = document.getElementById("adminPassword").value;
-  try { await signInWithEmailAndPassword(auth, email, pass); }
-  catch(e) { alert(e.message); }
+  const errEl = document.getElementById("adminLoginErr");
+  const btn   = document.getElementById("adminLoginBtn");
+
+  errEl.classList.add("hidden");
+  errEl.textContent = "";
+
+  if (!email || !pass) {
+    errEl.textContent = "Please enter both email and password.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = "Verifying…";
+
+  try {
+    // Sign into the secondary app — this doesn't touch the main auth session
+    await signInWithEmailAndPassword(adminVerifyAuth, email, pass);
+
+    // Credentials accepted — unlock admin panel
+    adminUnlocked = true;
+    document.getElementById("adminLoginSection").classList.add("hidden");
+    document.getElementById("adminPanel").classList.remove("hidden");
+    document.getElementById("adminEmail").value    = "";
+    document.getElementById("adminPassword").value = "";
+    updateLockLabel();
+  } catch(e) {
+    const msg =
+      (e.code === "auth/invalid-credential" ||
+       e.code === "auth/wrong-password"     ||
+       e.code === "auth/user-not-found")
+        ? "Incorrect email or password."
+        : e.code === "auth/invalid-email"
+          ? "Please enter a valid email address."
+          : "Login failed: " + e.message;
+    errEl.textContent = msg;
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = "Login as Admin";
+  }
 });
 
 // ── TIME HELPERS ──────────────────────────────────────────────
