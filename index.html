@@ -525,6 +525,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // ── CONFIG ────────────────────────────────────────────────────
+// ↓ Replace with your Cloudflare Worker URL after deploying
+const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
   authDomain: "wc-prediction-nk.firebaseapp.com",
@@ -1122,8 +1125,8 @@ document.getElementById("matchesContainer").addEventListener("click", async e =>
     return;
   }
 
-  // Streaming placeholder
-  panel.innerHTML = `<div class="ai-typing text-slate-400 text-xs">Analysing ${home} vs ${away}</div>`;
+  // Loading state
+  panel.innerHTML = `<div class="text-slate-400 text-xs animate-pulse">🤖 Analysing ${home} vs ${away}…</div>`;
 
   try {
     const prompt = `You are a football (soccer) analyst providing a concise match preview for a FIFA World Cup 2026 prediction game.
@@ -1145,7 +1148,7 @@ Give a single scoreline prediction in the format "HOME X–Y AWAY" (e.g. "${home
 
 Keep the whole response under 180 words. Be confident and direct. No disclaimers mid-text.`;
 
-    const response = await fetch("https://calm-sound-8b6d.mailtosanjeewa.workers.dev/", {
+    const response = await fetch(ANTHROPIC_PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1155,44 +1158,28 @@ Keep the whole response under 180 words. Be confident and direct. No disclaimers
       })
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(`API error ${response.status}`);
+      const errMsg = data?.error?.message || `HTTP ${response.status}`;
+      throw new Error(errMsg);
     }
 
-    // Stream the response
-    const reader  = response.body.getReader();
-    const decoder = new TextDecoder();
-    let   fullText = "";
-    panel.innerHTML = `<div class="ai-typing"></div>`;
-    const typingEl  = panel.querySelector(".ai-typing");
+    const fullText = data.content?.find(b => b.type === "text")?.text || "";
+    if (!fullText) throw new Error("Empty response from API");
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n");
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") break;
-        try {
-          const json = JSON.parse(data);
-          if (json.type === "content_block_delta" && json.delta?.text) {
-            fullText += json.delta.text;
-            typingEl.textContent = fullText;
-          }
-        } catch(_) {}
-      }
-    }
-
-    // Render formatted output
+    panel.classList.remove("ai-typing");
     panel.innerHTML = formatAIPreview(fullText, home, away);
     aiCache[id]     = panel.innerHTML;
     btn.innerHTML   = `<span class="text-base">🤖</span> Hide Preview`;
 
   } catch(err) {
-    panel.innerHTML = `<div class="text-red-400 text-xs">⚠️ Could not load preview. ${err.message}</div>`;
-    btn.innerHTML   = `<span class="text-base">🤖</span> Try Again`;
+    panel.innerHTML = `<div class="text-red-400 text-xs space-y-1">
+      <div>⚠️ Could not load preview.</div>
+      <div class="text-slate-500">${err.message}</div>
+      <div class="text-slate-600 mt-1">Check that your Cloudflare Worker URL is set correctly in the HTML (search for <code class="bg-slate-800 px-1 rounded">WORKER_URL</code>).</div>
+    </div>`;
+    btn.innerHTML = `<span class="text-base">🤖</span> Try Again`;
   } finally {
     btn.disabled = false;
   }
