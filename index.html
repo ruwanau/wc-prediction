@@ -78,6 +78,21 @@
     .tab-btn { transition: all 0.15s ease; font-weight: 500; }
     .tab-btn:not(.tab-active):hover { background: rgba(255,255,255,0.08); }
 
+    /* ── All Picks tab ── */
+    .pick-exact   { background: rgba(34,197,94,0.15);  border: 1px solid rgba(34,197,94,0.4);  color: #4ade80; }
+    .pick-correct { background: rgba(234,179,8,0.12);  border: 1px solid rgba(234,179,8,0.35); color: #fde68a; }
+    .pick-wrong   { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.3);  color: #fca5a5; }
+    .pick-pending { background: rgba(100,116,139,0.15); border: 1px solid rgba(100,116,139,0.3); color: #94a3b8; }
+    .pick-none    { background: rgba(30,41,59,0.4);    border: 1px solid rgba(255,255,255,0.06); color: #475569; }
+
+    .pick-score {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      min-width: 3.5rem;
+      text-align: center;
+    }
+
     /* ── Auth modal ── */
     .auth-input {
       width: 100%;
@@ -200,6 +215,7 @@
     <div class="flex items-center gap-3 flex-wrap justify-end">
       <nav class="flex gap-2 flex-wrap">
         <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 All Picks</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🏆 Leaderboard</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
@@ -255,6 +271,31 @@
       <div class="text-5xl mb-3">📅</div>
       <div class="text-lg">No matches scheduled yet.</div>
       <div class="text-sm mt-1">Check back soon!</div>
+    </div>
+
+  </section>
+
+  <!-- ALL PICKS TAB -->
+  <section id="predictionsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">All Picks</h2>
+      <p class="text-slate-400 text-sm">Everyone's predictions match by match, compared to the final result</p>
+      <div class="flex flex-wrap gap-4 mt-4 text-xs">
+        <span class="pick-exact   rounded-lg px-3 py-1.5 font-medium">🎯 Exact score (+3 pts)</span>
+        <span class="pick-correct rounded-lg px-3 py-1.5 font-medium">✅ Correct result (+1 pt)</span>
+        <span class="pick-wrong   rounded-lg px-3 py-1.5 font-medium">❌ Wrong</span>
+        <span class="pick-pending rounded-lg px-3 py-1.5 font-medium">⏳ Awaiting result</span>
+        <span class="pick-none    rounded-lg px-3 py-1.5 font-medium">— No pick</span>
+      </div>
+    </div>
+
+    <div id="allPicksContainer" class="space-y-5"></div>
+
+    <div id="allPicksEmpty" class="hidden text-center text-slate-500 py-16">
+      <div class="text-5xl mb-3">🔮</div>
+      <div class="text-lg">No predictions saved yet.</div>
+      <div class="text-sm mt-1">Check back once players have made their picks.</div>
     </div>
 
   </section>
@@ -997,6 +1038,140 @@ async function calculateLeaderboard() {
   });
 }
 
+// ── ALL PICKS TAB ─────────────────────────────────────────────
+async function renderAllPicks() {
+  const [matches, results, predSnap] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  ]);
+
+  const container = document.getElementById("allPicksContainer");
+  const emptyMsg  = document.getElementById("allPicksEmpty");
+  container.innerHTML = "";
+
+  // Build list of players sorted alphabetically, marking current user first
+  const players = [];
+  predSnap.forEach(ds => {
+    const d = ds.data();
+    players.push({ uid: ds.id, name: d.user || "Unknown", preds: d.predictions || {}, isMe: currentUser && ds.id === currentUser.uid });
+  });
+
+  if (!players.length) {
+    emptyMsg.classList.remove("hidden");
+    return;
+  }
+  emptyMsg.classList.add("hidden");
+
+  // Sort: current user first, then alphabetical
+  players.sort((a,b) => {
+    if (a.isMe) return -1;
+    if (b.isMe) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  matches.forEach(m => {
+    const result   = results[m.id];
+    const hasResult = result?.home !== undefined;
+
+    // For matches not yet locked, hide other people's picks (fair play)
+    const locked = (m.kickoffUtcMs && (m.kickoffUtcMs - Date.now()) / 60000 <= 30) || hasResult;
+
+    const card = document.createElement("div");
+    card.className = "glass rounded-2xl overflow-hidden";
+
+    // ── Match header ──
+    const resultHtml = hasResult
+      ? `<span class="display-font text-xl text-yellow-400 mx-1">${result.home}–${result.away}</span>
+         <span class="badge-completed px-2 py-0.5 rounded-full text-xs font-medium ml-1">FT</span>`
+      : locked
+        ? `<span class="text-slate-500 text-xs ml-1">Locked · awaiting result</span>`
+        : `<span class="text-slate-600 text-xs ml-1">Picks hidden until kickoff</span>`;
+
+    card.innerHTML = `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-4 bg-slate-900/60 border-b border-white/5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+          <span class="font-bold text-white">${m.home}</span>
+          <span class="text-slate-500 text-sm">vs</span>
+          <span class="font-bold text-white">${m.away}</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          ${resultHtml}
+          <span class="text-slate-600 text-xs hidden sm:inline">·</span>
+          <span class="text-slate-500 text-xs">${fmtLocal(m.kickoffUtcMs)}</span>
+        </div>
+      </div>`;
+
+    // ── Player rows ──
+    const rowsWrap = document.createElement("div");
+    rowsWrap.className = "divide-y divide-white/5";
+
+    players.forEach(p => {
+      const pred = p.preds[m.id];
+      const hasPred = pred && pred.home != null && pred.away != null;
+
+      let pickClass = "pick-none";
+      let pickLabel = "—";
+      let pointsHtml = "";
+      let icon = "";
+
+      if (!locked && !p.isMe) {
+        // Hide other players' picks before lockout
+        pickClass = "pick-none";
+        pickLabel = "Hidden";
+        icon = "🔒";
+      } else if (!hasPred) {
+        pickClass = "pick-none";
+        pickLabel = "No pick";
+        icon = "—";
+      } else if (!hasResult) {
+        pickClass = "pick-pending";
+        pickLabel = `${pred.home}–${pred.away}`;
+        icon = "⏳";
+      } else {
+        const mul = m.stage === "Knockout" ? 1.5 : 1;
+        if (pred.home === result.home && pred.away === result.away) {
+          pickClass  = "pick-exact";
+          pickLabel  = `${pred.home}–${pred.away}`;
+          icon       = "🎯";
+          const pts  = 3 * mul;
+          pointsHtml = `<span class="text-green-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
+        } else if (getOutcome(pred.home, pred.away) === getOutcome(result.home, result.away)) {
+          pickClass  = "pick-correct";
+          pickLabel  = `${pred.home}–${pred.away}`;
+          icon       = "✅";
+          const pts  = 1 * mul;
+          pointsHtml = `<span class="text-yellow-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
+        } else {
+          pickClass  = "pick-wrong";
+          pickLabel  = `${pred.home}–${pred.away}`;
+          icon       = "❌";
+          pointsHtml = `<span class="text-slate-600 text-xs ml-2">0 pts</span>`;
+        }
+      }
+
+      const row = document.createElement("div");
+      row.className = `flex items-center justify-between gap-3 px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
+      row.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="user-avatar flex-shrink-0" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${p.name.slice(0,2).toUpperCase()}</div>
+          <span class="text-sm font-medium truncate">${p.name}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="${pickClass} pick-score rounded-lg px-3 py-1">${icon} ${pickLabel}</span>
+          ${pointsHtml}
+        </div>`;
+      rowsWrap.appendChild(row);
+    });
+
+    card.appendChild(rowsWrap);
+    container.appendChild(card);
+  });
+
+  if (!matches.length) {
+    emptyMsg.classList.remove("hidden");
+  }
+}
+
 // ── TABS ──────────────────────────────────────────────────────
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1004,6 +1179,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.classList.add("tab-active"); btn.classList.remove("bg-slate-800");
     document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
     document.getElementById(btn.dataset.tab).classList.remove("hidden");
+    if (btn.dataset.tab==="predictionsTab") renderAllPicks();
     if (btn.dataset.tab==="resultsTab")     renderResultsTab();
     if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
   });
@@ -1017,8 +1193,13 @@ setInterval(() => {
 
 // ── REALTIME ──────────────────────────────────────────────────
 onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); });
-onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); });
-onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); });
+onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); });
+onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); });
+
+function renderAllPicksIfActive() {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "predictionsTab") renderAllPicks();
+}
 
 // ── CONFIRM MODAL ─────────────────────────────────────────────
 let _cb = null;
