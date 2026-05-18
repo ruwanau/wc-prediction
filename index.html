@@ -219,6 +219,7 @@
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🏆 Leaderboard</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
+        <button id="adminTabBtn" class="tab-btn px-4 py-2 rounded-xl bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
       </nav>
 
       <!-- User chip -->
@@ -371,94 +372,104 @@
     </div>
   </section>
 
-  <!-- ADMIN -->
-  <section class="mt-6">
-    <div class="glass rounded-2xl overflow-hidden border border-slate-700">
+  <!-- ADMIN TAB -->
+  <section id="adminTab" class="tab-content hidden space-y-6">
 
-      <button id="adminToggle"
-        class="w-full text-left bg-slate-800/80 hover:bg-slate-700/80 px-6 py-4 font-bold flex items-center justify-between transition">
-        <span>🔒 Admin Dashboard</span>
-        <span id="adminChevron" class="text-slate-400 transition-transform">▼</span>
-      </button>
+    <!-- Login gate (shown until admin verifies credentials) -->
+    <div id="adminLoginSection" class="glass rounded-2xl p-8 max-w-lg mx-auto">
+      <div class="text-center mb-6">
+        <div class="text-4xl mb-2">🔒</div>
+        <h2 class="display-font text-2xl text-yellow-400">Admin Access</h2>
+        <p class="text-slate-400 text-sm mt-1">Enter your admin credentials to unlock the dashboard</p>
+      </div>
+      <div class="flex flex-col gap-3">
+        <input type="email" id="adminEmail" placeholder="Admin Email"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+        <input type="password" id="adminPassword" placeholder="Admin Password"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+        <p id="adminLoginErr" class="text-red-400 text-sm hidden"></p>
+        <button id="adminLoginBtn"
+          class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl px-6 py-3 transition">
+          Login as Admin
+        </button>
+      </div>
+    </div>
 
-      <!-- Admin re-auth (if current user is not the admin) -->
-      <div id="adminLoginSection" class="hidden p-6 border-t border-slate-700">
-        <p class="text-slate-400 text-sm mb-4">Enter the admin email and password to access the dashboard.</p>
-        <div class="flex flex-col gap-3 max-w-md">
-          <input type="email" id="adminEmail" placeholder="Admin Email"
-            class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
-          <input type="password" id="adminPassword" placeholder="Admin Password"
-            class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
-          <p id="adminLoginErr" class="text-red-400 text-sm hidden"></p>
-          <button id="adminLoginBtn"
-            class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl px-6 py-3 transition">
-            Login as Admin
-          </button>
+    <!-- Admin panel (shown after credentials verified) -->
+    <div id="adminPanel" class="hidden space-y-6">
+
+      <div class="glass rounded-2xl p-5 flex items-center justify-between">
+        <div>
+          <h2 class="display-font text-2xl text-yellow-400">Admin Dashboard</h2>
+          <p class="text-slate-400 text-sm mt-0.5">Manage matches, results, and predictions</p>
+        </div>
+        <button id="adminSignOutBtn"
+          class="text-xs text-slate-400 hover:text-red-400 border border-slate-700 hover:border-red-700 px-3 py-1.5 rounded-lg transition">
+          🔓 Lock Dashboard
+        </button>
+      </div>
+
+      <!-- Lock -->
+      <div class="glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 class="display-font text-xl text-yellow-400">Global Prediction Lock</h3>
+          <p class="text-slate-400 text-sm mt-0.5">Force-lock all predictions regardless of kickoff time</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="lockStatus" class="text-sm text-slate-400">Status: —</span>
+          <button id="toggleLockBtn" class="bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-xl font-bold transition text-sm">Toggle Lock</button>
         </div>
       </div>
 
-      <div id="adminPanel" class="hidden p-6 space-y-6 border-t border-slate-700">
-
-        <!-- Lock -->
-        <div class="bg-slate-900/60 rounded-2xl p-5 border border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <!-- Add Match -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-1">Add Match</h3>
+        <p class="text-slate-500 text-xs mb-4">Enter kickoff in Australian Eastern Time (AEST/AEDT). Visitors see it in their local time.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <input type="text" id="homeTeam" placeholder="Home Team"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+          <input type="text" id="awayTeam" placeholder="Away Team"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
           <div>
-            <h3 class="display-font text-xl text-yellow-400">Global Prediction Lock</h3>
-            <p class="text-slate-400 text-sm mt-0.5">Force-lock all predictions regardless of kickoff time</p>
+            <input type="datetime-local" id="kickoff"
+              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-yellow-500 transition text-white" />
+            <p class="text-xs text-slate-500 mt-1 px-1">Australian Eastern Time</p>
           </div>
-          <div class="flex items-center gap-3">
-            <span id="lockStatus" class="text-sm text-slate-400">Status: —</span>
-            <button id="toggleLockBtn" class="bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-xl font-bold transition text-sm">Toggle Lock</button>
-          </div>
+          <select id="stage"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="Group">Group Stage</option>
+            <option value="Knockout">Knockout Stage</option>
+          </select>
+          <button id="addMatchBtn" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold transition">➕ Add Match</button>
         </div>
-
-        <!-- Add Match -->
-        <div class="bg-slate-900/60 rounded-2xl p-5 border border-slate-700">
-          <h3 class="display-font text-xl text-yellow-400 mb-4">Add Match</h3>
-          <p class="text-slate-500 text-xs mb-4">Enter kickoff in Australian Eastern Time (AEST/AEDT). Visitors see it in their local time.</p>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <input type="text" id="homeTeam" placeholder="Home Team"
-              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
-            <input type="text" id="awayTeam" placeholder="Away Team"
-              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition" />
-            <div>
-              <input type="datetime-local" id="kickoff"
-                class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-yellow-500 transition" />
-              <p class="text-xs text-slate-500 mt-1 px-1">Australian Eastern Time</p>
-            </div>
-            <select id="stage"
-              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition">
-              <option value="Group">Group Stage</option>
-              <option value="Knockout">Knockout Stage</option>
-            </select>
-            <button id="addMatchBtn" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold transition">➕ Add Match</button>
-          </div>
-        </div>
-
-        <!-- Enter Results -->
-        <div class="bg-slate-900/60 rounded-2xl p-5 border border-slate-700">
-          <h3 class="display-font text-xl text-yellow-400 mb-4">Enter Results</h3>
-          <div id="adminMatches" class="space-y-3"></div>
-        </div>
-
-        <!-- Danger Zone -->
-        <div class="bg-red-950/40 rounded-2xl p-5 border border-red-700/50">
-          <h3 class="display-font text-xl text-red-400 mb-1">Danger Zone</h3>
-          <p class="text-slate-500 text-xs mb-5">These actions are irreversible. Confirm dialog will appear first.</p>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
-              <div class="font-bold text-sm mb-1">Reset All Predictions</div>
-              <div class="text-xs text-slate-500 mb-3">Deletes every player's predictions. Matches and results stay.</div>
-              <button id="resetPredictionsBtn" class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">🗑 Clear All Predictions</button>
-            </div>
-            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
-              <div class="font-bold text-sm mb-1">Reset Everything</div>
-              <div class="text-xs text-slate-500 mb-3">Deletes ALL matches, results, and predictions.</div>
-              <button id="resetAllBtn" class="bg-red-800 hover:bg-red-700 border border-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">💥 Reset Entire Game</button>
-            </div>
-          </div>
-        </div>
-
       </div>
+
+      <!-- Enter Results -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-4">Enter Results</h3>
+        <div id="adminMatches" class="space-y-3">
+          <p class="text-slate-500 text-sm">No matches added yet.</p>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="bg-red-950/40 rounded-2xl p-5 border border-red-700/50">
+        <h3 class="display-font text-xl text-red-400 mb-1">Danger Zone</h3>
+        <p class="text-slate-500 text-xs mb-5">These actions are irreversible. Confirm dialog will appear first.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
+            <div class="font-bold text-sm mb-1">Reset All Predictions</div>
+            <div class="text-xs text-slate-500 mb-3">Deletes every player's predictions. Matches and results stay.</div>
+            <button id="resetPredictionsBtn" class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">🗑 Clear All Predictions</button>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
+            <div class="font-bold text-sm mb-1">Reset Everything</div>
+            <div class="text-xs text-slate-500 mb-3">Deletes ALL matches, results, and predictions.</div>
+            <button id="resetAllBtn" class="bg-red-800 hover:bg-red-700 border border-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">💥 Reset Entire Game</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -613,9 +624,14 @@ onAuthStateChanged(auth, async user => {
     document.getElementById("hdrEmail").textContent = user.email;
 
     // Admin panel visibility based on adminUnlocked flag
-    document.getElementById("adminPanel").classList.toggle("hidden", !adminUnlocked);
-    document.getElementById("adminLoginSection").classList.toggle("hidden", adminUnlocked);
-    if (adminUnlocked) updateLockLabel();
+    if (adminUnlocked) {
+      document.getElementById("adminPanel").classList.remove("hidden");
+      document.getElementById("adminLoginSection").classList.add("hidden");
+      updateLockLabel();
+    } else {
+      document.getElementById("adminPanel").classList.add("hidden");
+      document.getElementById("adminLoginSection").classList.remove("hidden");
+    }
 
     renderMatches();
     calculateLeaderboard();
@@ -629,18 +645,7 @@ onAuthStateChanged(auth, async user => {
 // ── SIGN OUT ──────────────────────────────────────────────────
 document.getElementById("signOutBtn").addEventListener("click", () => signOut(auth));
 
-// ── ADMIN SECTION TOGGLE ──────────────────────────────────────
-let chevronOpen = false;
-document.getElementById("adminToggle").addEventListener("click", () => {
-  if (!adminUnlocked) {
-    document.getElementById("adminLoginSection").classList.toggle("hidden");
-  }
-  chevronOpen = !chevronOpen;
-  document.getElementById("adminChevron").style.transform = chevronOpen ? "rotate(180deg)" : "";
-});
-
-// Admin login — verifies credentials using a secondary Auth instance so the
-// current participant session is never disturbed
+// ── ADMIN TAB LOGIN ───────────────────────────────────────────
 document.getElementById("adminLoginBtn").addEventListener("click", async () => {
   const email = document.getElementById("adminEmail").value.trim();
   const pass  = document.getElementById("adminPassword").value;
@@ -660,21 +665,26 @@ document.getElementById("adminLoginBtn").addEventListener("click", async () => {
   btn.textContent = "Verifying…";
 
   try {
-    // Sign into the secondary app — this doesn't touch the main auth session
     await signInWithEmailAndPassword(adminVerifyAuth, email, pass);
-
-    // Credentials accepted — unlock admin panel
     adminUnlocked = true;
+
+    // Update UI
     document.getElementById("adminLoginSection").classList.add("hidden");
     document.getElementById("adminPanel").classList.remove("hidden");
     document.getElementById("adminEmail").value    = "";
     document.getElementById("adminPassword").value = "";
+
+    // Style admin tab as unlocked
+    const adminBtn = document.getElementById("adminTabBtn");
+    adminBtn.textContent = "⚙️ Admin";
+    adminBtn.classList.remove("text-slate-400", "border-slate-700");
+    adminBtn.classList.add("text-yellow-400", "border-yellow-700/50");
+
     updateLockLabel();
+    renderMatches(); // repopulate adminMatches
   } catch(e) {
     const msg =
-      (e.code === "auth/invalid-credential" ||
-       e.code === "auth/wrong-password"     ||
-       e.code === "auth/user-not-found")
+      (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password" || e.code === "auth/user-not-found")
         ? "Incorrect email or password."
         : e.code === "auth/invalid-email"
           ? "Please enter a valid email address."
@@ -685,6 +695,25 @@ document.getElementById("adminLoginBtn").addEventListener("click", async () => {
     btn.disabled    = false;
     btn.textContent = "Login as Admin";
   }
+});
+
+["adminEmail","adminPassword"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("adminLoginBtn").click();
+  })
+);
+
+// Lock dashboard button (re-hides the panel without logging out the user)
+document.getElementById("adminSignOutBtn").addEventListener("click", () => {
+  adminUnlocked = false;
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("adminLoginSection").classList.remove("hidden");
+  const adminBtn = document.getElementById("adminTabBtn");
+  adminBtn.textContent = "🔒 Admin";
+  adminBtn.classList.add("text-slate-400", "border-slate-700");
+  adminBtn.classList.remove("text-yellow-400", "border-yellow-700/50");
+  // Switch back to predict tab
+  document.querySelector('[data-tab="predictTab"]').click();
 });
 
 // ── TIME HELPERS ──────────────────────────────────────────────
@@ -1182,6 +1211,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.dataset.tab==="predictionsTab") renderAllPicks();
     if (btn.dataset.tab==="resultsTab")     renderResultsTab();
     if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
+    if (btn.dataset.tab==="adminTab")       { if(adminUnlocked) renderMatches(); }
   });
 });
 
