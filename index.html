@@ -760,7 +760,7 @@ async function getMatches() {
   const snap = await getDocs(collection(db,"matches"));
   const arr  = [];
   snap.forEach(d => arr.push({id:d.id,...d.data()}));
-  arr.sort((a,b) => (a.kickoffUtcMs||0)-(b.kickoffUtcMs||0));
+  arr.sort((a,b) => (b.kickoffUtcMs||0)-(a.kickoffUtcMs||0));
   return arr;
 }
 async function getResults() {
