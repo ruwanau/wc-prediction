@@ -259,7 +259,9 @@
         <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 All Picks</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🏆 Leaderboard</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
         <button id="adminTabBtn" class="tab-btn px-4 py-2 rounded-xl bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
       </nav>
@@ -412,6 +414,90 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- STANDINGS TAB -->
+  <section id="standingsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Group Standings</h2>
+      <p class="text-slate-400 text-sm">Live standings for all 12 groups · Powered by Sofascore</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3954-58210" src="https://widgets.sofascore.com/embed/tournament/3954/season/58210/standings/Group%20A?widgetTitle=Group%20A&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3955-58210" src="https://widgets.sofascore.com/embed/tournament/3955/season/58210/standings/Group%20B?widgetTitle=Group%20B&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3956-58210" src="https://widgets.sofascore.com/embed/tournament/3956/season/58210/standings/Group%20C?widgetTitle=Group%20C&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3957-58210" src="https://widgets.sofascore.com/embed/tournament/3957/season/58210/standings/Group%20D?widgetTitle=Group%20D&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3958-58210" src="https://widgets.sofascore.com/embed/tournament/3958/season/58210/standings/Group%20E?widgetTitle=Group%20E&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3959-58210" src="https://widgets.sofascore.com/embed/tournament/3959/season/58210/standings/Group%20F?widgetTitle=Group%20F&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3960-58210" src="https://widgets.sofascore.com/embed/tournament/3960/season/58210/standings/Group%20G?widgetTitle=Group%20G&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3961-58210" src="https://widgets.sofascore.com/embed/tournament/3961/season/58210/standings/Group%20H?widgetTitle=Group%20H&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139403-58210" src="https://widgets.sofascore.com/embed/tournament/139403/season/58210/standings/Group%20I?widgetTitle=Group%20I&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139404-58210" src="https://widgets.sofascore.com/embed/tournament/139404/season/58210/standings/Group%20J?widgetTitle=Group%20J&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139405-58210" src="https://widgets.sofascore.com/embed/tournament/139405/season/58210/standings/Group%20K?widgetTitle=Group%20K&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139406-58210" src="https://widgets.sofascore.com/embed/tournament/139406/season/58210/standings/Group%20L?widgetTitle=Group%20L&showCompetitionLogo=true" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+    </div>
+
+    <div class="text-center text-xs text-slate-600 pb-2">
+      Standings provided by <a href="https://www.sofascore.com" target="_blank" class="text-slate-500 hover:text-yellow-400 transition underline">Sofascore</a>
+    </div>
+
+  </section>
+
+  <!-- KNOCKOUT TAB -->
+  <section id="knockoutTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Knockout Stage</h2>
+      <p class="text-slate-400 text-sm">Live bracket · Powered by Sofascore</p>
+    </div>
+
+    <div class="glass rounded-2xl p-4 overflow-x-auto">
+      <iframe id="sofa-cupTree-embed-16-58210-10560975" src="https://widgets.sofascore.com/embed/unique-tournament/16/season/58210/cuptree/10560975?widgetTitle=Knockout stage&showCompetitionLogo=true&widgetTheme=dark" style="height:872px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="yes"></iframe>
+    </div>
+
+    <div class="text-center text-xs text-slate-600 pb-2">
+      Cup tree provided by <a href="https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210" target="_blank" class="text-slate-500 hover:text-yellow-400 transition underline">Sofascore</a>
+    </div>
+
   </section>
 
   <!-- ADMIN TAB -->
