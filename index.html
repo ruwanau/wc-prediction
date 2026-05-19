@@ -93,6 +93,30 @@
       text-align: center;
     }
 
+    /* ── Probability Bar ── */
+    .prob-bar-wrap { font-size: 0.72rem; }
+    .prob-bar-track {
+      display: flex;
+      height: 10px;
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 6px 0 4px;
+      background: rgba(255,255,255,0.05);
+    }
+    .prob-seg-home  { background: #22c55e; transition: width 0.6s ease; }
+    .prob-seg-draw  { background: #94a3b8; transition: width 0.6s ease; }
+    .prob-seg-away  { background: #f59e0b; transition: width 0.6s ease; }
+    .prob-labels { display: flex; justify-content: space-between; color: #64748b; }
+    .prob-labels span { display: flex; align-items: center; gap: 4px; }
+    .prob-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .prob-pct { font-family: 'Bebas Neue', cursive; font-size: 0.85rem; letter-spacing: 0.04em; }
+    .prob-pct.home { color: #22c55e; }
+    .prob-pct.draw { color: #94a3b8; }
+    .prob-pct.away { color: #f59e0b; }
+    .prob-loading { color: #475569; font-size: 0.7rem; display: flex; align-items: center; gap: 6px; }
+    .prob-loading::before { content:""; width:10px; height:10px; border-radius:50%; border:2px solid #475569; border-top-color:#f5c842; display:inline-block; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ── AI Preview ── */
     .ai-panel { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
@@ -527,6 +551,8 @@ import {
 // ── CONFIG ────────────────────────────────────────────────────
 // ↓ Replace with your Cloudflare Worker URL after deploying
 const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev";
+// ↓ Your API-Football key from dashboard.api-football.com (free, no credit card)
+const API_FOOTBALL_KEY    = "6c97409b3f83a678f02df5ddd3c333cf";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
@@ -915,7 +941,8 @@ async function renderMatches() {
       </div>
       ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
         Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}</div>` : ""}
-      <div class="mt-4 border-t border-white/5 pt-4">
+      <div id="prob-bar-${m.id}" class="prob-bar-wrap mt-4"></div>
+      <div class="mt-3 border-t border-white/5 pt-3">
         <button class="ai-preview-btn w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-400 hover:text-yellow-300 bg-slate-900/50 hover:bg-slate-800/80 border border-slate-700/60 hover:border-yellow-600/40 rounded-xl px-4 py-2.5 transition-all"
           data-id="${m.id}" data-home="${m.home}" data-away="${m.away}" data-stage="${m.stage}" data-kickoff="${fmtLocal(m.kickoffUtcMs)}">
           <span class="text-base">🤖</span> AI Match Preview
@@ -923,6 +950,8 @@ async function renderMatches() {
         <div id="ai-panel-${m.id}" class="hidden mt-3 bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 text-sm text-slate-300 leading-relaxed space-y-1 ai-panel"></div>
       </div>`;
     con.appendChild(card);
+    // Load probability bar asynchronously (doesn't block render)
+    if (!hasResult) loadProbBar(m.id, m.home, m.away);
 
     // Admin card
     const ac = document.createElement("div");
@@ -1093,6 +1122,121 @@ async function calculateLeaderboard() {
       <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>`;
     tbody.appendChild(row);
   });
+}
+
+// ── WIN/DRAW/LOSS PROBABILITY BARS ────────────────────────────
+const probCache = {};
+
+function renderProbBar(matchId, home, away, data) {
+  const el = document.getElementById(`prob-bar-${matchId}`);
+  if (!el) return;
+
+  const hw = Math.round(data.home);
+  const dr = Math.round(data.draw);
+  const aw = Math.round(data.away);
+
+  el.innerHTML = `
+    <div class="prob-labels mb-1">
+      <span><span class="prob-dot" style="background:#22c55e"></span>${home}<span class="prob-pct home ml-1">${hw}%</span></span>
+      <span><span class="prob-dot" style="background:#94a3b8"></span>Draw<span class="prob-pct draw ml-1">${dr}%</span></span>
+      <span><span class="prob-dot" style="background:#f59e0b"></span>${away}<span class="prob-pct away ml-1">${aw}%</span></span>
+    </div>
+    <div class="prob-bar-track">
+      <div class="prob-seg-home"  style="width:${hw}%"></div>
+      <div class="prob-seg-draw"  style="width:${dr}%"></div>
+      <div class="prob-seg-away"  style="width:${aw}%"></div>
+    </div>
+    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">Statistical probability · API-Football</div>`;
+}
+
+async function loadProbBar(matchId, home, away) {
+  const el = document.getElementById(`prob-bar-${matchId}`);
+  if (!el || !API_FOOTBALL_KEY || API_FOOTBALL_KEY === "6c97409b3f83a678f02df5ddd3c333cf") return;
+
+  // Return cached
+  if (probCache[matchId]) {
+    renderProbBar(matchId, home, away, probCache[matchId]);
+    return;
+  }
+
+  el.innerHTML = `<div class="prob-loading">Fetching match probabilities…</div>`;
+
+  try {
+    // Step 1: search for the fixture by team names in the World Cup (league=1, season=2026)
+    const fixtureRes = await fetch(
+      `https://v3.football.api-sports.io/fixtures?league=1&season=2026&team=${encodeURIComponent(home)}`,
+      { headers: { "x-apisports-key": API_FOOTBALL_KEY } }
+    );
+    const fixtureData = await fixtureRes.json();
+
+    // Find the fixture matching both teams
+    const fixtures = fixtureData?.response || [];
+    const match = fixtures.find(f => {
+      const h = (f.teams?.home?.name || "").toLowerCase();
+      const a = (f.teams?.away?.name || "").toLowerCase();
+      const hn = home.toLowerCase();
+      const an = away.toLowerCase();
+      return (h.includes(hn) || hn.includes(h)) && (a.includes(an) || an.includes(a));
+    });
+
+    if (!match) {
+      // Try searching by away team if not found
+      const fixtureRes2 = await fetch(
+        `https://v3.football.api-sports.io/fixtures?league=1&season=2026&team=${encodeURIComponent(away)}`,
+        { headers: { "x-apisports-key": API_FOOTBALL_KEY } }
+      );
+      const fd2 = await fixtureRes2.json();
+      const fixtures2 = fd2?.response || [];
+      const match2 = fixtures2.find(f => {
+        const h = (f.teams?.home?.name || "").toLowerCase();
+        const a = (f.teams?.away?.name || "").toLowerCase();
+        const hn = home.toLowerCase();
+        const an = away.toLowerCase();
+        return (h.includes(hn) || hn.includes(h)) && (a.includes(an) || an.includes(a));
+      });
+
+      if (!match2) {
+        el.innerHTML = `<div class="text-slate-600 text-xs text-center">Probability data not available for this match yet.</div>`;
+        return;
+      }
+
+      await fetchAndRenderPrediction(match2.fixture.id, matchId, home, away, el);
+      return;
+    }
+
+    await fetchAndRenderPrediction(match.fixture.id, matchId, home, away, el);
+
+  } catch(err) {
+    el.innerHTML = `<div class="text-slate-600 text-xs text-center">Could not load probability data.</div>`;
+    console.warn("Prob bar error:", err);
+  }
+}
+
+async function fetchAndRenderPrediction(fixtureId, matchId, home, away, el) {
+  const predRes = await fetch(
+    `https://v3.football.api-sports.io/predictions?fixture=${fixtureId}`,
+    { headers: { "x-apisports-key": API_FOOTBALL_KEY } }
+  );
+  const predData = await predRes.json();
+  const pred = predData?.response?.[0];
+  const pct  = pred?.predictions?.percent;
+
+  if (!pct) {
+    el.innerHTML = `<div class="text-slate-600 text-xs text-center">Probability data not available for this match yet.</div>`;
+    return;
+  }
+
+  // API returns strings like "45%", "30%", "25%"
+  const home_pct = parseFloat(pct.home) || 0;
+  const draw_pct = parseFloat(pct.draw) || 0;
+  const away_pct = parseFloat(pct.away) || 0;
+
+  // Normalise to exactly 100%
+  const total = home_pct + draw_pct + away_pct || 100;
+  const norm  = { home: (home_pct/total)*100, draw: (draw_pct/total)*100, away: (away_pct/total)*100 };
+
+  probCache[matchId] = norm;
+  renderProbBar(matchId, home, away, norm);
 }
 
 // ── AI MATCH PREVIEW ──────────────────────────────────────────
