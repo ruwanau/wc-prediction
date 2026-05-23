@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>2026 FIFA World Cup Prediction Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --gold: #f5c842;
+      --gold-light: #fde68a;
+      --dark: #080e1a;
+      --panel: rgba(12, 20, 38, 0.82);
+    }
+
+    * { font-family: 'DM Sans', sans-serif; }
+
+    body {
+      background: var(--dark);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 40% at 50% -10%, rgba(245,200,66,0.12), transparent),
+        radial-gradient(ellipse 60% 30% at 80% 100%, rgba(22,163,74,0.08), transparent),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .glass {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .tab-active { background: var(--gold); color: #000; font-weight: 700; }
+
+    .score-input::-webkit-inner-spin-button,
+    .score-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .score-input { -moz-appearance: textfield; }
+
+    .display-font { font-family: 'Bebas Neue', cursive; letter-spacing: 0.04em; }
+
+    .match-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .match-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(245,200,66,0.08); }
+
+    .badge-group    { background: rgba(22,163,74,0.2);  color: #4ade80;  border: 1px solid rgba(22,163,74,0.3); }
+    .badge-knockout { background: rgba(245,200,66,0.15); color: var(--gold); border: 1px solid rgba(245,200,66,0.3); }
+    .badge-completed{ background: rgba(99,102,241,0.15); color: #a5b4fc;  border: 1px solid rgba(99,102,241,0.3); }
+    .badge-live     { background: rgba(220,38,38,0.2);  color: #fca5a5;  border: 1px solid rgba(220,38,38,0.4); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
+
+    .score-display {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(245,200,66,0.3);
+      color: var(--gold);
+      font-family: 'Bebas Neue', cursive;
+      font-size: 2rem;
+      width: 3.5rem; height: 3.5rem;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 0.75rem;
+    }
+
+    .result-card { border-left: 3px solid var(--gold); background: rgba(245,200,66,0.04); }
+
+    .auto-lock-indicator {
+      background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3);
+      border-radius: 0.5rem; padding: 0.25rem 0.75rem;
+      font-size: 0.75rem; color: #fde68a;
+    }
+
+    thead th { font-family: 'Bebas Neue', cursive; letter-spacing: 0.08em; font-size: 0.9rem; }
+    .rank-gold   { color: #f5c842; }
+    .rank-silver { color: #94a3b8; }
+    .rank-bronze { color: #cd7c2f; }
+
+    .tab-btn { transition: all 0.15s ease; font-weight: 500; }
+    .tab-btn:not(.tab-active):hover { background: rgba(255,255,255,0.08); }
+
+    /* ── All Picks tab ── */
+    .pick-exact   { background: rgba(34,197,94,0.15);  border: 1px solid rgba(34,197,94,0.4);  color: #4ade80; }
+    .pick-correct { background: rgba(234,179,8,0.12);  border: 1px solid rgba(234,179,8,0.35); color: #fde68a; }
+    .pick-wrong   { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.3);  color: #fca5a5; }
+    .pick-pending { background: rgba(100,116,139,0.15); border: 1px solid rgba(100,116,139,0.3); color: #94a3b8; }
+    .pick-none    { background: rgba(30,41,59,0.4);    border: 1px solid rgba(255,255,255,0.06); color: #475569; }
+
+    .pick-score {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      min-width: 3.5rem;
+      text-align: center;
+    }
+
+    /* ── Probability Bar ── */
+    .prob-bar-wrap { font-size: 0.72rem; }
+    .prob-bar-track {
+      display: flex;
+      height: 10px;
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 6px 0 4px;
+      background: rgba(255,255,255,0.05);
+    }
+    .prob-seg-home  { background: #22c55e; transition: width 0.6s ease; }
+    .prob-seg-draw  { background: #94a3b8; transition: width 0.6s ease; }
+    .prob-seg-away  { background: #f59e0b; transition: width 0.6s ease; }
+    .prob-labels { display: flex; justify-content: space-between; color: #64748b; }
+    .prob-labels span { display: flex; align-items: center; gap: 4px; }
+    .prob-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .prob-pct { font-family: 'Bebas Neue', cursive; font-size: 0.85rem; letter-spacing: 0.04em; }
+    .prob-pct.home { color: #22c55e; }
+    .prob-pct.draw { color: #94a3b8; }
+    .prob-pct.away { color: #f59e0b; }
+    .prob-loading { color: #475569; font-size: 0.7rem; display: flex; align-items: center; gap: 6px; }
+    .prob-loading::before { content:""; width:10px; height:10px; border-radius:50%; border:2px solid #475569; border-top-color:#f5c842; display:inline-block; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── AI Preview ── */
+    .ai-panel { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+    .ai-panel .ai-section-title { color: #f5c842; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+    .ai-panel .ai-section-title:first-child { margin-top: 0; }
+    .ai-panel .ai-prediction-box {
+      margin-top: 0.75rem;
+      background: rgba(245,200,66,0.08);
+      border: 1px solid rgba(245,200,66,0.25);
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+    .ai-panel .ai-score { font-family: 'Bebas Neue', cursive; font-size: 1.8rem; color: #f5c842; letter-spacing: 0.08em; }
+    .ai-panel .ai-disclaimer { font-size: 0.65rem; color: #475569; margin-top: 0.5rem; }
+    .ai-typing::after { content: "▋"; animation: blink 0.7s infinite; color: #f5c842; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── Auth modal ── */
+    .auth-input {
+      width: 100%;
+      background: rgba(2,8,23,0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 0.75rem;
+      padding: 0.8rem 1rem;
+      color: white;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .auth-input:focus { border-color: var(--gold); }
+    .auth-input::placeholder { color: #475569; }
+
+    .btn-gold {
+      width: 100%; background: var(--gold); color: black;
+      font-weight: 700; padding: 0.85rem 1rem; border-radius: 0.75rem;
+      transition: all 0.15s; cursor: pointer; border: none;
+    }
+    .btn-gold:hover { background: #fde68a; }
+    .btn-gold:active { transform: scale(0.98); }
+    .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .auth-tab { padding: 0.75rem 0; font-size: 0.875rem; font-weight: 600; width: 100%; border: none; background: none; cursor: pointer; transition: all 0.15s; }
+    .auth-tab-on  { color: var(--gold); border-bottom: 2px solid var(--gold); }
+    .auth-tab-off { color: #64748b; border-bottom: 2px solid transparent; }
+
+    .form-err { color: #f87171; font-size: 0.78rem; margin-top: 0.3rem; display: none; }
+
+    .user-avatar {
+      width: 2.1rem; height: 2.1rem; border-radius: 50%;
+      background: linear-gradient(135deg, #f5c842, #f97316);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8rem; color: #000; flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+<!-- ══════════════════════════════════════
+     AUTH GATE
+══════════════════════════════════════ -->
+<div id="authGate" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+  <div class="glass rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+
+    <div class="px-8 pt-8 pb-5 text-center">
+      <div class="text-5xl mb-3">⚽</div>
+      <h2 class="display-font text-3xl text-yellow-400 leading-none">World Cup 2026</h2>
+      <p class="text-slate-400 text-sm mt-1.5">Sign in or create an account to make predictions</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex border-b border-white/10 px-8">
+      <button id="tabLogin"    class="auth-tab auth-tab-on"  onclick="authTab('login')">Sign In</button>
+      <button id="tabRegister" class="auth-tab auth-tab-off" onclick="authTab('register')">Create Account</button>
+    </div>
+
+    <!-- Login -->
+    <div id="formLogin" class="px-8 py-7 space-y-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Email</label>
+        <input id="liEmail" type="email" class="auth-input" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Password</label>
+        <input id="liPass" type="password" class="auth-input" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <p id="liErr" class="form-err"></p>
+      <button id="liBtn" class="btn-gold mt-1">Sign In</button>
+      <p class="text-center text-xs text-slate-500 pt-1">
+        No account? <button class="text-yellow-400 hover:underline" onclick="authTab('register')">Create one — it's free</button>
+      </p>
+    </div>
+
+    <!-- Register -->
+    <div id="formRegister" class="px-8 py-7 space-y-4 hidden">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Display Name</label>
+        <input id="rgName" type="text" class="auth-input" placeholder="How you'll appear on the leaderboard" autocomplete="nickname" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Email</label>
+        <input id="rgEmail" type="email" class="auth-input" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Password</label>
+        <input id="rgPass" type="password" class="auth-input" placeholder="At least 6 characters" autocomplete="new-password" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Confirm Password</label>
+        <input id="rgPass2" type="password" class="auth-input" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+      <p id="rgErr" class="form-err"></p>
+      <button id="rgBtn" class="btn-gold mt-1">Create Account</button>
+      <p class="text-center text-xs text-slate-500 pt-1">
+        Already have one? <button class="text-yellow-400 hover:underline" onclick="authTab('login')">Sign in</button>
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════ -->
+<div id="appShell" class="hidden">
+
+<header class="sticky top-0 z-40 bg-black/40 backdrop-blur-xl border-b border-white/10">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    <div class="flex items-center gap-3">
+      <span class="text-4xl">⚽</span>
+      <div>
+        <h1 class="display-font text-3xl text-yellow-400 leading-none">2026 FIFA World Cup</h1>
+        <p class="text-slate-400 text-xs mt-0.5">Prediction Game · Kickoffs in your local time</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 flex-wrap justify-end">
+      <nav class="flex gap-2 flex-wrap">
+        <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 All Picks</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
+        <button id="adminTabBtn" class="tab-btn px-4 py-2 rounded-xl bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
+      </nav>
+
+      <!-- User chip -->
+      <div class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2">
+        <div id="hdrAvatar" class="user-avatar">?</div>
+        <div class="min-w-0">
+          <div id="hdrName"  class="text-sm font-bold leading-none truncate max-w-[8rem]">—</div>
+          <div id="hdrEmail" class="text-xs text-slate-500 leading-none mt-0.5 truncate max-w-[8rem]">—</div>
+        </div>
+        <button id="signOutBtn" class="ml-1 text-xs text-slate-400 hover:text-red-400 transition font-medium whitespace-nowrap">Sign out</button>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+  <!-- PREDICT TAB -->
+  <section id="predictTab" class="tab-content space-y-5">
+
+    <!-- Who's predicting -->
+    <div class="glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div id="predAvatar" class="user-avatar text-lg">?</div>
+        <div>
+          <div class="text-xs text-slate-400 uppercase tracking-widest">Predicting as</div>
+          <div id="predName" class="font-bold text-xl leading-tight">—</div>
+        </div>
+      </div>
+      <button id="savePredictionsBtn"
+        class="bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-bold px-7 py-3 rounded-xl transition-all">
+        💾 Save Predictions
+      </button>
+    </div>
+
+    <div id="lockBanner" class="hidden bg-red-900/40 border border-red-500/50 rounded-2xl p-4 flex items-center gap-3">
+      <span class="text-2xl">🔒</span>
+      <div>
+        <div class="font-bold text-red-300">Predictions Locked</div>
+        <div class="text-sm text-red-400">The administrator has locked all predictions.</div>
+      </div>
+    </div>
+
+    <div id="autoLockBanners" class="space-y-2"></div>
+
+    <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+
+    <div id="noMatchesMsg" class="hidden text-center text-slate-500 py-16">
+      <div class="text-5xl mb-3">📅</div>
+      <div class="text-lg">No matches scheduled yet.</div>
+      <div class="text-sm mt-1">Check back soon!</div>
+    </div>
+
+  </section>
+
+  <!-- ALL PICKS TAB -->
+  <section id="predictionsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">All Picks</h2>
+      <p class="text-slate-400 text-sm">Everyone's predictions match by match, compared to the final result</p>
+      <div class="flex flex-wrap gap-4 mt-4 text-xs">
+        <span class="pick-exact   rounded-lg px-3 py-1.5 font-medium">🎯 Exact score (+3 pts)</span>
+        <span class="pick-correct rounded-lg px-3 py-1.5 font-medium">✅ Correct result (+1 pt)</span>
+        <span class="pick-wrong   rounded-lg px-3 py-1.5 font-medium">❌ Wrong</span>
+        <span class="pick-pending rounded-lg px-3 py-1.5 font-medium">⏳ Awaiting result</span>
+        <span class="pick-none    rounded-lg px-3 py-1.5 font-medium">— No pick</span>
+      </div>
+    </div>
+
+    <div id="allPicksContainer" class="space-y-5"></div>
+
+    <div id="allPicksEmpty" class="hidden text-center text-slate-500 py-16">
+      <div class="text-5xl mb-3">🔮</div>
+      <div class="text-lg">No predictions saved yet.</div>
+      <div class="text-sm mt-1">Check back once players have made their picks.</div>
+    </div>
+
+  </section>
+
+  <!-- RESULTS TAB -->
+  <section id="resultsTab" class="tab-content hidden space-y-5">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Match Results</h2>
+      <p class="text-slate-400 text-sm">Completed match scores and outcomes</p>
+    </div>
+    <div id="resultsContainer" class="space-y-3"></div>
+    <div id="noResultsMsg" class="hidden text-center text-slate-500 py-16">
+      <div class="text-5xl mb-3">⏳</div>
+      <div class="text-lg">No results yet.</div>
+      <div class="text-sm mt-1">Results appear here once matches are completed.</div>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD TAB -->
+  <section id="leaderboardTab" class="tab-content hidden">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Leaderboard</h2>
+      <p class="text-slate-400 text-sm mb-6">Updated live as results come in</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-slate-700 text-slate-400">
+              <th class="py-3 px-3">Rank</th>
+              <th class="py-3 px-3">Player</th>
+              <th class="py-3 px-3">Exact Scores</th>
+              <th class="py-3 px-3">Correct Results</th>
+              <th class="py-3 px-3">Points</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+        <div id="noLeaderboardMsg" class="hidden text-center text-slate-500 py-10">No predictions yet.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RULES TAB -->
+  <section id="rulesTab" class="tab-content hidden">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-6">Rules & Scoring</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-700">
+          <div class="text-3xl mb-3">🎯</div>
+          <div class="display-font text-2xl text-yellow-400">3 Points</div>
+          <div class="text-sm text-slate-300 mt-1">Exact score prediction</div>
+          <div class="text-xs text-slate-500 mt-2">You predict the exact final scoreline</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-700">
+          <div class="text-3xl mb-3">✅</div>
+          <div class="display-font text-2xl text-yellow-400">1 Point</div>
+          <div class="text-sm text-slate-300 mt-1">Correct outcome (win/draw)</div>
+          <div class="text-xs text-slate-500 mt-2">Right result, wrong score</div>
+        </div>
+        <div class="bg-slate-900/60 rounded-xl p-5 border border-slate-700">
+          <div class="text-3xl mb-3">🔥</div>
+          <div class="display-font text-2xl text-yellow-400">1.5× Multiplier</div>
+          <div class="text-sm text-slate-300 mt-1">Knockout stage matches</div>
+          <div class="text-xs text-slate-500 mt-2">All points multiplied in knockout rounds</div>
+        </div>
+      </div>
+      <div class="mt-6 bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-4 flex gap-3 items-start">
+        <span class="text-xl">⏰</span>
+        <div>
+          <div class="font-bold text-yellow-300 text-sm">Auto-Lock</div>
+          <div class="text-slate-300 text-sm mt-0.5">Predictions lock automatically 30 minutes before kickoff. Plan ahead!</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STANDINGS TAB -->
+  <section id="standingsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Group Standings</h2>
+      <p class="text-slate-400 text-sm">Live standings for all 12 groups · Powered by Sofascore</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3954-58210" src="https://widgets.sofascore.com/embed/tournament/3954/season/58210/standings/Group%20A?widgetTitle=Group%20A&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3955-58210" src="https://widgets.sofascore.com/embed/tournament/3955/season/58210/standings/Group%20B?widgetTitle=Group%20B&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3956-58210" src="https://widgets.sofascore.com/embed/tournament/3956/season/58210/standings/Group%20C?widgetTitle=Group%20C&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3957-58210" src="https://widgets.sofascore.com/embed/tournament/3957/season/58210/standings/Group%20D?widgetTitle=Group%20D&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3958-58210" src="https://widgets.sofascore.com/embed/tournament/3958/season/58210/standings/Group%20E?widgetTitle=Group%20E&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3959-58210" src="https://widgets.sofascore.com/embed/tournament/3959/season/58210/standings/Group%20F?widgetTitle=Group%20F&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3960-58210" src="https://widgets.sofascore.com/embed/tournament/3960/season/58210/standings/Group%20G?widgetTitle=Group%20G&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-3961-58210" src="https://widgets.sofascore.com/embed/tournament/3961/season/58210/standings/Group%20H?widgetTitle=Group%20H&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139403-58210" src="https://widgets.sofascore.com/embed/tournament/139403/season/58210/standings/Group%20I?widgetTitle=Group%20I&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139404-58210" src="https://widgets.sofascore.com/embed/tournament/139404/season/58210/standings/Group%20J?widgetTitle=Group%20J&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139405-58210" src="https://widgets.sofascore.com/embed/tournament/139405/season/58210/standings/Group%20K?widgetTitle=Group%20K&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <iframe id="sofa-standings-embed-139406-58210" src="https://widgets.sofascore.com/embed/tournament/139406/season/58210/standings/Group%20L?widgetTitle=Group%20L&showCompetitionLogo=true&widgetTheme=dark" style="height:431px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="no"></iframe>
+      </div>
+
+    </div>
+
+    <div class="text-center text-xs text-slate-600 pb-2">
+      Standings provided by <a href="https://www.sofascore.com" target="_blank" class="text-slate-500 hover:text-yellow-400 transition underline">Sofascore</a>
+    </div>
+
+  </section>
+
+  <!-- KNOCKOUT TAB -->
+  <section id="knockoutTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Knockout Stage</h2>
+      <p class="text-slate-400 text-sm">Live bracket · Powered by Sofascore</p>
+    </div>
+
+    <div class="glass rounded-2xl p-4 overflow-x-auto">
+      <iframe id="sofa-cupTree-embed-16-58210-10560975" src="https://widgets.sofascore.com/embed/unique-tournament/16/season/58210/cuptree/10560975?widgetTitle=Knockout stage&showCompetitionLogo=true&widgetTheme=dark" style="height:872px!important;max-width:100%!important;width:100%!important;" frameborder="0" scrolling="yes"></iframe>
+    </div>
+
+    <div class="text-center text-xs text-slate-600 pb-2">
+      Cup tree provided by <a href="https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210" target="_blank" class="text-slate-500 hover:text-yellow-400 transition underline">Sofascore</a>
+    </div>
+
+  </section>
+
+  <!-- ADMIN TAB -->
+  <section id="adminTab" class="tab-content hidden space-y-6">
+
+    <!-- Login gate (shown until admin verifies credentials) -->
+    <div id="adminLoginSection" class="glass rounded-2xl p-8 max-w-lg mx-auto">
+      <div class="text-center mb-6">
+        <div class="text-4xl mb-2">🔒</div>
+        <h2 class="display-font text-2xl text-yellow-400">Admin Access</h2>
+        <p class="text-slate-400 text-sm mt-1">Enter your admin credentials to unlock the dashboard</p>
+      </div>
+      <div class="flex flex-col gap-3">
+        <input type="email" id="adminEmail" placeholder="Admin Email"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+        <input type="password" id="adminPassword" placeholder="Admin Password"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+        <p id="adminLoginErr" class="text-red-400 text-sm hidden"></p>
+        <button id="adminLoginBtn"
+          class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl px-6 py-3 transition">
+          Login as Admin
+        </button>
+      </div>
+    </div>
+
+    <!-- Admin panel (shown after credentials verified) -->
+    <div id="adminPanel" class="hidden space-y-6">
+
+      <div class="glass rounded-2xl p-5 flex items-center justify-between">
+        <div>
+          <h2 class="display-font text-2xl text-yellow-400">Admin Dashboard</h2>
+          <p class="text-slate-400 text-sm mt-0.5">Manage matches, results, and predictions</p>
+        </div>
+        <button id="adminSignOutBtn"
+          class="text-xs text-slate-400 hover:text-red-400 border border-slate-700 hover:border-red-700 px-3 py-1.5 rounded-lg transition">
+          🔓 Lock Dashboard
+        </button>
+      </div>
+
+      <!-- Lock -->
+      <div class="glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 class="display-font text-xl text-yellow-400">Global Prediction Lock</h3>
+          <p class="text-slate-400 text-sm mt-0.5">Force-lock all predictions regardless of kickoff time</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="lockStatus" class="text-sm text-slate-400">Status: —</span>
+          <button id="toggleLockBtn" class="bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-xl font-bold transition text-sm">Toggle Lock</button>
+        </div>
+      </div>
+
+      <!-- Add Match -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-1">Add Match</h3>
+        <p class="text-slate-500 text-xs mb-4">Enter kickoff in Australian Eastern Time (AEST/AEDT). Visitors see it in their local time.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <input type="text" id="homeTeam" placeholder="Home Team"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+          <input type="text" id="awayTeam" placeholder="Away Team"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+          <div>
+            <input type="datetime-local" id="kickoff"
+              class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-yellow-500 transition text-white" />
+            <p class="text-xs text-slate-500 mt-1 px-1">Australian Eastern Time</p>
+          </div>
+          <select id="stage"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="Group">Group Stage</option>
+            <option value="Knockout">Knockout Stage</option>
+          </select>
+          <button id="addMatchBtn" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold transition">➕ Add Match</button>
+        </div>
+      </div>
+
+      <!-- Enter Results -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-4">Enter Results</h3>
+        <div id="adminMatches" class="space-y-3">
+          <p class="text-slate-500 text-sm">No matches added yet.</p>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="bg-red-950/40 rounded-2xl p-5 border border-red-700/50">
+        <h3 class="display-font text-xl text-red-400 mb-1">Danger Zone</h3>
+        <p class="text-slate-500 text-xs mb-5">These actions are irreversible. Confirm dialog will appear first.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
+            <div class="font-bold text-sm mb-1">Reset All Predictions</div>
+            <div class="text-xs text-slate-500 mb-3">Deletes every player's predictions. Matches and results stay.</div>
+            <button id="resetPredictionsBtn" class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">🗑 Clear All Predictions</button>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-700">
+            <div class="font-bold text-sm mb-1">Reset Everything</div>
+            <div class="text-xs text-slate-500 mb-3">Deletes ALL matches, results, and predictions.</div>
+            <button id="resetAllBtn" class="bg-red-800 hover:bg-red-700 border border-red-600 px-4 py-2 rounded-lg text-sm font-bold transition w-full">💥 Reset Entire Game</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm">
+  <div class="glass rounded-2xl p-8 max-w-md w-full mx-4 border border-red-700/50">
+    <div class="text-3xl mb-3 text-center">⚠️</div>
+    <h3 id="modalTitle" class="display-font text-2xl text-red-400 text-center mb-2"></h3>
+    <p id="modalBody" class="text-slate-300 text-sm text-center mb-6"></p>
+    <div class="flex gap-3">
+      <button id="modalCancel"  class="flex-1 bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold transition text-sm">Cancel</button>
+      <button id="modalConfirm" class="flex-1 bg-red-600 hover:bg-red-500 px-4 py-3 rounded-xl font-bold transition text-sm">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /appShell -->
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs,
+  doc, setDoc, getDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  onAuthStateChanged,
+  fetchSignInMethodsForEmail
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// ── CONFIG ────────────────────────────────────────────────────
+// ↓ Replace with your Cloudflare Worker URL
+const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev";
+// API-Football key is stored in the Worker as a secret (API_FOOTBALL_KEY)
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
+  authDomain: "wc-prediction-nk.firebaseapp.com",
+  projectId: "wc-prediction-nk",
+  storageBucket: "wc-prediction-nk.firebasestorage.app",
+  messagingSenderId: "791400320278",
+  appId: "1:791400320278:web:7faed774a893dc7c399437"
+};
+
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+// Secondary app used to verify admin credentials without signing out the participant
+const adminVerifyApp  = initializeApp(firebaseConfig, "adminVerify");
+const adminVerifyAuth = getAuth(adminVerifyApp);
+
+let currentUser   = null;
+let adminUnlocked = false;  // set to true once admin credentials verified this session
+
+function isAdmin() {
+  return adminUnlocked;
+}
+
+// ── AUTH TAB SWITCH ───────────────────────────────────────────
+window.authTab = function(tab) {
+  const login = tab === "login";
+  document.getElementById("tabLogin").className    = "auth-tab " + (login  ? "auth-tab-on" : "auth-tab-off");
+  document.getElementById("tabRegister").className = "auth-tab " + (!login ? "auth-tab-on" : "auth-tab-off");
+  document.getElementById("formLogin").classList.toggle("hidden", !login);
+  document.getElementById("formRegister").classList.toggle("hidden", login);
+  document.getElementById("liErr").style.display = "none";
+  document.getElementById("rgErr").style.display = "none";
+};
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function setBusy(id, busy, label) {
+  const b = document.getElementById(id);
+  b.disabled = busy;
+  b.textContent = busy ? "Please wait…" : label;
+}
+
+// ── SIGN IN ───────────────────────────────────────────────────
+document.getElementById("liBtn").addEventListener("click", async () => {
+  const email = document.getElementById("liEmail").value.trim();
+  const pass  = document.getElementById("liPass").value;
+  document.getElementById("liErr").style.display = "none";
+  if (!email || !pass) { showErr("liErr","Please fill in all fields."); return; }
+  setBusy("liBtn", true, "Sign In");
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    const msg = (e.code==="auth/invalid-credential"||e.code==="auth/wrong-password"||e.code==="auth/user-not-found")
+      ? "Incorrect email or password." : e.message;
+    showErr("liErr", msg);
+  } finally { setBusy("liBtn", false, "Sign In"); }
+});
+["liEmail","liPass"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", e => { if(e.key==="Enter") document.getElementById("liBtn").click(); })
+);
+
+// ── REGISTER ──────────────────────────────────────────────────
+document.getElementById("rgBtn").addEventListener("click", async () => {
+  const name  = document.getElementById("rgName").value.trim();
+  const email = document.getElementById("rgEmail").value.trim();
+  const pass  = document.getElementById("rgPass").value;
+  const pass2 = document.getElementById("rgPass2").value;
+  document.getElementById("rgErr").style.display = "none";
+  if (!name)           { showErr("rgErr","Please enter a display name."); return; }
+  if (!email)          { showErr("rgErr","Please enter an email address."); return; }
+  if (pass.length < 6) { showErr("rgErr","Password must be at least 6 characters."); return; }
+  if (pass !== pass2)  { showErr("rgErr","Passwords don't match."); return; }
+  setBusy("rgBtn", true, "Create Account");
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: name });
+    await setDoc(doc(db, "users", cred.user.uid), { displayName: name, email, createdAt: Date.now() });
+  } catch(e) {
+    const msg = e.code==="auth/email-already-in-use"
+      ? "That email is already registered — try signing in."
+      : e.code==="auth/invalid-email" ? "Please enter a valid email address." : e.message;
+    showErr("rgErr", msg);
+  } finally { setBusy("rgBtn", false, "Create Account"); }
+});
+["rgName","rgEmail","rgPass","rgPass2"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", e => { if(e.key==="Enter") document.getElementById("rgBtn").click(); })
+);
+
+// ── AUTH STATE ────────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+
+  if (user) {
+    // Resolve display name (Firestore > Auth > email prefix)
+    let name = user.displayName || user.email.split("@")[0];
+    try {
+      const ud = await getDoc(doc(db, "users", user.uid));
+      if (ud.exists() && ud.data().displayName) name = ud.data().displayName;
+    } catch(_) {}
+
+    // Show app, hide gate
+    document.getElementById("authGate").classList.add("hidden");
+    document.getElementById("appShell").classList.remove("hidden");
+
+    // Update header UI
+    const initials = name.slice(0,2).toUpperCase();
+    ["hdrAvatar","predAvatar"].forEach(id => document.getElementById(id).textContent = initials);
+    document.getElementById("hdrName").textContent  = name;
+    document.getElementById("predName").textContent = name;
+    document.getElementById("hdrEmail").textContent = user.email;
+
+    // Admin panel visibility based on adminUnlocked flag
+    if (adminUnlocked) {
+      document.getElementById("adminPanel").classList.remove("hidden");
+      document.getElementById("adminLoginSection").classList.add("hidden");
+      updateLockLabel();
+    } else {
+      document.getElementById("adminPanel").classList.add("hidden");
+      document.getElementById("adminLoginSection").classList.remove("hidden");
+    }
+
+    renderMatches();
+    calculateLeaderboard();
+  } else {
+    adminUnlocked = false;
+    document.getElementById("authGate").classList.remove("hidden");
+    document.getElementById("appShell").classList.add("hidden");
+  }
+});
+
+// ── SIGN OUT ──────────────────────────────────────────────────
+document.getElementById("signOutBtn").addEventListener("click", () => signOut(auth));
+
+// ── ADMIN TAB LOGIN ───────────────────────────────────────────
+document.getElementById("adminLoginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("adminEmail").value.trim();
+  const pass  = document.getElementById("adminPassword").value;
+  const errEl = document.getElementById("adminLoginErr");
+  const btn   = document.getElementById("adminLoginBtn");
+
+  errEl.classList.add("hidden");
+  errEl.textContent = "";
+
+  if (!email || !pass) {
+    errEl.textContent = "Please enter both email and password.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = "Verifying…";
+
+  try {
+    await signInWithEmailAndPassword(adminVerifyAuth, email, pass);
+    adminUnlocked = true;
+
+    // Update UI
+    document.getElementById("adminLoginSection").classList.add("hidden");
+    document.getElementById("adminPanel").classList.remove("hidden");
+    document.getElementById("adminEmail").value    = "";
+    document.getElementById("adminPassword").value = "";
+
+    // Style admin tab as unlocked
+    const adminBtn = document.getElementById("adminTabBtn");
+    adminBtn.textContent = "⚙️ Admin";
+    adminBtn.classList.remove("text-slate-400", "border-slate-700");
+    adminBtn.classList.add("text-yellow-400", "border-yellow-700/50");
+
+    updateLockLabel();
+    renderMatches(); // repopulate adminMatches
+  } catch(e) {
+    const msg =
+      (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password" || e.code === "auth/user-not-found")
+        ? "Incorrect email or password."
+        : e.code === "auth/invalid-email"
+          ? "Please enter a valid email address."
+          : "Login failed: " + e.message;
+    errEl.textContent = msg;
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = "Login as Admin";
+  }
+});
+
+["adminEmail","adminPassword"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("adminLoginBtn").click();
+  })
+);
+
+// Lock dashboard button (re-hides the panel without logging out the user)
+document.getElementById("adminSignOutBtn").addEventListener("click", () => {
+  adminUnlocked = false;
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("adminLoginSection").classList.remove("hidden");
+  const adminBtn = document.getElementById("adminTabBtn");
+  adminBtn.textContent = "🔒 Admin";
+  adminBtn.classList.add("text-slate-400", "border-slate-700");
+  adminBtn.classList.remove("text-yellow-400", "border-yellow-700/50");
+  // Switch back to predict tab
+  document.querySelector('[data-tab="predictTab"]').click();
+});
+
+// ── TIME HELPERS ──────────────────────────────────────────────
+const AEST_TZ = "Australia/Sydney";
+
+function aestLocalToUtcMs(val) {
+  const [dp, tp] = val.split("T");
+  const [y,m,d]  = dp.split("-").map(Number);
+  const [h,min]  = tp.split(":").map(Number);
+  const tmp = new Date(Date.UTC(y, m-1, d, h, min));
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: AEST_TZ, year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", hour12:false
+  }).formatToParts(tmp);
+  const p = t => Number(parts.find(x=>x.type===t).value);
+  const diff = (y-p("year"))*365.25*24*3600000 + (m-p("month"))*30.44*24*3600000
+    + (d-p("day"))*24*3600000 + (h-p("hour"))*3600000 + (min-p("minute"))*60000;
+  return tmp.getTime() + diff;
+}
+
+function fmtLocal(ms) {
+  if (!ms) return "TBA";
+  return new Intl.DateTimeFormat(undefined, {
+    weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit", hour12:true
+  }).format(new Date(ms));
+}
+function fmtAEST(ms) {
+  if (!ms) return "TBA";
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: AEST_TZ, weekday:"short", month:"short", day:"numeric",
+    hour:"2-digit", minute:"2-digit", hour12:true
+  }).format(new Date(ms));
+}
+function matchLocked(match, globalLocked) {
+  if (globalLocked) return true;
+  if (!match.kickoffUtcMs) return false;
+  return (match.kickoffUtcMs - Date.now()) / 60000 <= 30;
+}
+
+// ── DATA ──────────────────────────────────────────────────────
+function getOutcome(h,a) { return h>a?"HOME":a>h?"AWAY":"DRAW"; }
+
+async function getMatches() {
+  const snap = await getDocs(collection(db,"matches"));
+  const arr  = [];
+  snap.forEach(d => arr.push({id:d.id,...d.data()}));
+  arr.sort((a,b) => (b.kickoffUtcMs||0)-(a.kickoffUtcMs||0));
+  return arr;
+}
+async function getResults() {
+  const snap = await getDocs(collection(db,"results"));
+  const obj  = {};
+  snap.forEach(d => { obj[d.id]=d.data(); });
+  return obj;
+}
+async function getLocked() {
+  const d = await getDoc(doc(db,"settings","predictionLock"));
+  return d.exists() ? d.data().locked : false;
+}
+async function setLocked(v) { await setDoc(doc(db,"settings","predictionLock"),{locked:v}); }
+
+// ── LOAD USER PREDICTIONS INTO INPUTS ─────────────────────────
+async function loadMyPredictions() {
+  if (!currentUser) return;
+  try {
+    const d = await getDoc(doc(db,"predictions",currentUser.uid));
+    if (!d.exists()) return;
+    const preds = d.data().predictions || {};
+    Object.entries(preds).forEach(([mid,p]) => {
+      const h = document.getElementById(`home-${mid}`);
+      const a = document.getElementById(`away-${mid}`);
+      if (h && p.home!=null) h.value = p.home;
+      if (a && p.away!=null) a.value = p.away;
+    });
+  } catch(_){}
+}
+
+// ── RESULTS TAB ───────────────────────────────────────────────
+async function renderResultsTab() {
+  const [matches, results] = await Promise.all([getMatches(), getResults()]);
+  const container = document.getElementById("resultsContainer");
+  const noMsg     = document.getElementById("noResultsMsg");
+  const done = matches.filter(m => results[m.id]?.home !== undefined);
+  container.innerHTML = "";
+  if (!done.length) { noMsg.classList.remove("hidden"); return; }
+  noMsg.classList.add("hidden");
+  done.forEach(m => {
+    const r = results[m.id];
+    const out = getOutcome(r.home,r.away);
+    const lbl = out==="HOME"?`${m.home} Win`:out==="AWAY"?`${m.away} Win`:"Draw";
+    const c = document.createElement("div");
+    c.className = "glass result-card rounded-2xl p-5 match-card";
+    c.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+          <span class="badge-completed px-2.5 py-0.5 rounded-full text-xs font-medium">Full Time</span>
+        </div>
+        <span class="text-xs text-slate-500">${fmtLocal(m.kickoffUtcMs)}</span>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-1 text-right"><div class="text-lg font-bold">${m.home}</div></div>
+        <div class="flex items-center gap-3">
+          <div class="score-display">${r.home}</div>
+          <div class="display-font text-2xl text-slate-500">–</div>
+          <div class="score-display">${r.away}</div>
+        </div>
+        <div class="flex-1"><div class="text-lg font-bold">${m.away}</div></div>
+      </div>
+      <div class="mt-3 text-center text-xs text-yellow-400/70 font-medium">
+        ${lbl}${m.stage==="Knockout"?' <span class="ml-2 text-purple-400">1.5× Points</span>':""}
+      </div>`;
+    container.appendChild(c);
+  });
+}
+
+// ── PREDICT TAB ───────────────────────────────────────────────
+async function renderMatches() {
+  const [matches, results, globalLocked] = await Promise.all([getMatches(), getResults(), getLocked()]);
+  const con   = document.getElementById("matchesContainer");
+  const adm   = document.getElementById("adminMatches");
+  con.innerHTML = ""; adm.innerHTML = "";
+
+  document.getElementById("lockBanner").classList.toggle("hidden", !globalLocked);
+
+  // Soon-locking banners
+  const ab     = document.getElementById("autoLockBanners");
+  ab.innerHTML = "";
+  const soon   = matches.filter(m => {
+    if (globalLocked || !m.kickoffUtcMs) return false;
+    const mins = (m.kickoffUtcMs - Date.now()) / 60000;
+    return mins > 0 && mins <= 60;
+  });
+  if (soon.length) {
+    const bn = document.createElement("div");
+    bn.className = "bg-yellow-900/30 border border-yellow-500/40 rounded-2xl p-4 flex items-center gap-3";
+    bn.innerHTML = `<span class="text-2xl">⏰</span>
+      <div><div class="font-bold text-yellow-300 text-sm">Predictions closing soon</div>
+      <div class="text-yellow-400/70 text-xs mt-0.5">${soon.map(m=>`${m.home} vs ${m.away}`).join(", ")} — locks 30 min before kickoff</div></div>`;
+    ab.appendChild(bn);
+  }
+
+  document.getElementById("noMatchesMsg").classList.toggle("hidden", matches.length > 0);
+
+  matches.forEach(m => {
+    const locked    = matchLocked(m, globalLocked);
+    const actual    = results[m.id];
+    const hasResult = actual?.home !== undefined;
+    const minsLeft  = m.kickoffUtcMs ? (m.kickoffUtcMs - Date.now()) / 60000 : null;
+
+    let badge = "";
+    if (hasResult) badge = `<span class="badge-completed px-2.5 py-0.5 rounded-full text-xs font-medium">Full Time</span>`;
+    else if (minsLeft !== null && minsLeft <= 0) badge = `<span class="badge-live px-2.5 py-0.5 rounded-full text-xs font-medium">Live / Ended</span>`;
+    else if (locked) badge = `<span class="auto-lock-indicator">🔒 Locked</span>`;
+    else if (minsLeft !== null && minsLeft <= 60) badge = `<span class="auto-lock-indicator">⏳ Locks in ~${Math.max(0,Math.floor(minsLeft))} min</span>`;
+
+    // Predict card
+    const card = document.createElement("div");
+    card.className = "glass rounded-2xl p-6 match-card";
+    card.innerHTML = `
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+          ${badge}
+        </div>
+        <span class="text-xs text-slate-400">📅 ${fmtLocal(m.kickoffUtcMs)}</span>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex-1 text-right"><div class="text-xl font-bold">${m.home}</div></div>
+        <div class="flex items-center gap-3">
+          <input type="number" min="0" ${locked?"disabled":""} id="home-${m.id}"
+            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+          <div class="display-font text-2xl text-yellow-400">:</div>
+          <input type="number" min="0" ${locked?"disabled":""} id="away-${m.id}"
+            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+        </div>
+        <div class="flex-1"><div class="text-xl font-bold">${m.away}</div></div>
+      </div>
+      ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
+        Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}</div>` : ""}
+      <div id="prob-bar-${m.id}" class="prob-bar-wrap mt-4"></div>
+      <div class="mt-3 border-t border-white/5 pt-3">
+        <button class="ai-preview-btn w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-400 hover:text-yellow-300 bg-slate-900/50 hover:bg-slate-800/80 border border-slate-700/60 hover:border-yellow-600/40 rounded-xl px-4 py-2.5 transition-all"
+          data-id="${m.id}" data-home="${m.home}" data-away="${m.away}" data-stage="${m.stage}" data-kickoff="${fmtLocal(m.kickoffUtcMs)}">
+          <span class="text-base">🤖</span> AI Match Preview
+        </button>
+        <div id="ai-panel-${m.id}" class="hidden mt-3 bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 text-sm text-slate-300 leading-relaxed space-y-1 ai-panel"></div>
+      </div>`;
+    con.appendChild(card);
+    // Load probability bar asynchronously (doesn't block render)
+    if (!hasResult) loadProbBar(m.id, m.home, m.away);
+
+    // Admin card
+    const ac = document.createElement("div");
+    ac.className = "bg-slate-800/50 border border-slate-700 rounded-xl p-4";
+    ac.innerHTML = `
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div>
+          <div class="font-bold">${m.home} vs ${m.away}</div>
+          <div class="text-xs text-slate-500 mt-0.5">${fmtLocal(m.kickoffUtcMs)} · ${m.stage}</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="number" min="0" id="actual-home-${m.id}" value="${actual?.home??""}"
+            class="w-16 h-11 rounded-lg bg-slate-700 border border-slate-600 text-center focus:outline-none focus:border-yellow-500 transition" />
+          <span class="text-yellow-400 font-bold display-font text-xl">:</span>
+          <input type="number" min="0" id="actual-away-${m.id}" value="${actual?.away??""}"
+            class="w-16 h-11 rounded-lg bg-slate-700 border border-slate-600 text-center focus:outline-none focus:border-yellow-500 transition" />
+          <button class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm transition" data-id="${m.id}">Save</button>
+          <button class="del-result-btn bg-slate-700 hover:bg-red-700 border border-slate-600 hover:border-red-600 px-3 py-2 rounded-lg text-sm transition" title="Delete result" data-id="${m.id}">🗑</button>
+        </div>
+      </div>`;
+    adm.appendChild(ac);
+  });
+
+  // Restore this user's predictions
+  loadMyPredictions();
+
+  // Save result
+  document.querySelectorAll(".save-result-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const h  = document.getElementById(`actual-home-${id}`).value;
+      const a  = document.getElementById(`actual-away-${id}`).value;
+      if (h===""||a==="") { alert("Enter both scores."); return; }
+      btn.textContent = "Saving…";
+      await setDoc(doc(db,"results",id),{home:Number(h),away:Number(a)});
+      btn.textContent = "Saved ✓";
+      setTimeout(()=>{ btn.textContent="Save"; }, 2000);
+      calculateLeaderboard();
+    });
+  });
+
+  // Delete result
+  document.querySelectorAll(".del-result-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id  = btn.dataset.id;
+      const lbl = btn.closest(".bg-slate-800\\/50")?.querySelector(".font-bold")?.textContent?.trim() || "this match";
+      showConfirm("Delete Result",
+        `Remove the result for ${lbl}? The match stays but scoring will be undone.`,
+        async () => { await deleteDoc(doc(db,"results",id)); renderMatches(); renderResultsTab(); calculateLeaderboard(); });
+    });
+  });
+
+  updateLockLabel();
+}
+
+// ── ADD MATCH ─────────────────────────────────────────────────
+document.getElementById("addMatchBtn").addEventListener("click", async () => {
+  const home    = document.getElementById("homeTeam").value.trim();
+  const away    = document.getElementById("awayTeam").value.trim();
+  const kickoff = document.getElementById("kickoff").value;
+  const stage   = document.getElementById("stage").value;
+  if (!home||!away||!kickoff) { alert("Please fill all fields."); return; }
+  const kickoffUtcMs = aestLocalToUtcMs(kickoff);
+  await addDoc(collection(db,"matches"),{home,away,stage,kickoffUtcMs,kickoffAEST:kickoff,createdAt:Date.now()});
+  document.getElementById("homeTeam").value = "";
+  document.getElementById("awayTeam").value = "";
+  document.getElementById("kickoff").value  = "";
+  alert(`Match added. Kickoff: ${fmtAEST(kickoffUtcMs)} AEST`);
+});
+
+// ── LOCK ──────────────────────────────────────────────────────
+async function updateLockLabel() {
+  const locked = await getLocked();
+  const el = document.getElementById("lockStatus");
+  if (el) el.textContent = locked ? "Status: 🔒 Locked" : "Status: 🔓 Open";
+}
+document.getElementById("toggleLockBtn").addEventListener("click", async () => {
+  await setLocked(!(await getLocked()));
+  renderMatches();
+});
+
+// ── SAVE PREDICTIONS (keyed by UID) ───────────────────────────
+document.getElementById("savePredictionsBtn").addEventListener("click", async () => {
+  if (!currentUser) { alert("Please sign in first."); return; }
+  const globalLocked = await getLocked();
+  const matches = await getMatches();
+  const preds = {};
+  let skipped = 0;
+
+  matches.forEach(m => {
+    if (matchLocked(m, globalLocked)) { skipped++; return; }
+    const h = document.getElementById(`home-${m.id}`)?.value;
+    const a = document.getElementById(`away-${m.id}`)?.value;
+    preds[m.id] = { home: h===""?null:Number(h), away: a===""?null:Number(a) };
+  });
+
+  if (!Object.keys(preds).length && skipped) { alert("All predictions are currently locked."); return; }
+
+  // Merge with existing so locked picks aren't wiped
+  let existing = {};
+  try {
+    const ed = await getDoc(doc(db,"predictions",currentUser.uid));
+    if (ed.exists()) existing = ed.data().predictions || {};
+  } catch(_){}
+
+  // Resolve display name
+  let name = currentUser.displayName || currentUser.email.split("@")[0];
+  try {
+    const ud = await getDoc(doc(db,"users",currentUser.uid));
+    if (ud.exists() && ud.data().displayName) name = ud.data().displayName;
+  } catch(_){}
+
+  await setDoc(doc(db,"predictions",currentUser.uid), {
+    user: name,
+    uid: currentUser.uid,
+    predictions: { ...existing, ...preds },
+    updatedAt: Date.now()
+  });
+
+  calculateLeaderboard();
+  alert(skipped ? `Saved! (${skipped} locked match${skipped>1?"es":""} unchanged.)` : "Predictions saved! ✓");
+});
+
+// ── LEADERBOARD ───────────────────────────────────────────────
+async function calculateLeaderboard() {
+  const [matches, results, predSnap] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  ]);
+  const board = [];
+
+  predSnap.forEach(ds => {
+    const data = ds.data();
+    let pts=0, exact=0, outcome=0;
+    matches.forEach(m => {
+      const pred = data.predictions?.[m.id];
+      const act  = results[m.id];
+      if (!pred || act?.home===undefined) return;
+      const mul = m.stage==="Knockout" ? 1.5 : 1;
+      if (pred.home===act.home && pred.away===act.away) { pts+=3*mul; exact++; return; }
+      if (getOutcome(pred.home,pred.away)===getOutcome(act.home,act.away)) { pts+=1*mul; outcome++; }
+    });
+    board.push({ user: data.user, exact, outcome, pts, isMe: currentUser && ds.id===currentUser.uid });
+  });
+
+  board.sort((a,b) => b.pts - a.pts);
+
+  const tbody = document.getElementById("leaderboardBody");
+  const noMsg = document.getElementById("noLeaderboardMsg");
+  tbody.innerHTML = "";
+  if (!board.length) { noMsg.classList.remove("hidden"); return; }
+  noMsg.classList.add("hidden");
+
+  board.forEach((e,i) => {
+    const rank = i+1;
+    const rc = rank===1?"rank-gold":rank===2?"rank-silver":rank===3?"rank-bronze":"";
+    const re = rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":rank;
+    const pts = e.pts%1===0?e.pts:e.pts.toFixed(1);
+    const row = document.createElement("tr");
+    row.className = `border-b border-slate-800 transition ${e.isMe?"bg-yellow-400/5":"hover:bg-white/3"}`;
+    row.innerHTML = `
+      <td class="py-4 px-3 font-bold display-font text-lg ${rc}">${re}</td>
+      <td class="py-4 px-3 font-medium">
+        ${e.user}
+        ${e.isMe?'<span class="ml-2 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full">You</span>':""}
+      </td>
+      <td class="py-4 px-3 text-slate-300">${e.exact}</td>
+      <td class="py-4 px-3 text-slate-300">${e.outcome}</td>
+      <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+// ── WIN/DRAW/LOSS PROBABILITY BARS ────────────────────────────
+const probCache = {};
+
+// API-Football is proxied through the same Cloudflare Worker to avoid CORS
+// The worker forwards requests to v3.football.api-sports.io when the
+// "x-target" header is "apifootball"
+async function apifootball(path) {
+  const res = await fetch(ANTHROPIC_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ _apifootball: path })
+  });
+  return res.json();
+}
+
+function renderProbBar(matchId, home, away, data) {
+  const el = document.getElementById(`prob-bar-${matchId}`);
+  if (!el) return;
+
+  const hw = Math.round(data.home);
+  const dr = Math.round(data.draw);
+  const aw = Math.round(data.away);
+
+  el.innerHTML = `
+    <div class="prob-labels mb-1">
+      <span><span class="prob-dot" style="background:#22c55e"></span>${home} <span class="prob-pct home">${hw}%</span></span>
+      <span><span class="prob-dot" style="background:#94a3b8"></span>Draw <span class="prob-pct draw">${dr}%</span></span>
+      <span><span class="prob-dot" style="background:#f59e0b"></span>${away} <span class="prob-pct away">${aw}%</span></span>
+    </div>
+    <div class="prob-bar-track">
+      <div class="prob-seg-home" style="width:${hw}%"></div>
+      <div class="prob-seg-draw" style="width:${dr}%"></div>
+      <div class="prob-seg-away" style="width:${aw}%"></div>
+    </div>
+    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">Statistical probability · API-Football</div>`;
+}
+
+async function loadProbBar(matchId, home, away) {
+  const el = document.getElementById(`prob-bar-${matchId}`);
+  if (!el) return;
+
+  if (probCache[matchId]) {
+    renderProbBar(matchId, home, away, probCache[matchId]);
+    return;
+  }
+
+  el.innerHTML = `<div class="prob-loading">Fetching match probabilities…</div>`;
+
+  try {
+    // Step 1: search for the fixture in World Cup 2026 (league=1)
+    // Try home team name first, then away team if no match found
+    let fixtureId = null;
+
+    for (const searchTeam of [home, away]) {
+      const data = await apifootball(`/fixtures?league=1&season=2026&search=${encodeURIComponent(searchTeam)}`);
+      const fixtures = data?.response || [];
+      const found = fixtures.find(f => {
+        const h = (f.teams?.home?.name || "").toLowerCase();
+        const a = (f.teams?.away?.name || "").toLowerCase();
+        const hn = home.toLowerCase().replace(/\s+/g,"");
+        const an = away.toLowerCase().replace(/\s+/g,"");
+        return (h.replace(/\s+/g,"").includes(hn) || hn.includes(h.replace(/\s+/g,""))) &&
+               (a.replace(/\s+/g,"").includes(an) || an.includes(a.replace(/\s+/g,"")));
+      });
+      if (found) { fixtureId = found.fixture.id; break; }
+    }
+
+    if (!fixtureId) {
+      el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">No probability data found for this fixture yet.</div>`;
+      return;
+    }
+
+    // Step 2: get predictions for that fixture
+    const pred = await apifootball(`/predictions?fixture=${fixtureId}`);
+    const pct  = pred?.response?.[0]?.predictions?.percent;
+
+    if (!pct) {
+      el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Prediction data not available yet.</div>`;
+      return;
+    }
+
+    const hp = parseFloat(pct.home) || 0;
+    const dp = parseFloat(pct.draw) || 0;
+    const ap = parseFloat(pct.away) || 0;
+    const total = hp + dp + ap || 100;
+    const norm  = { home:(hp/total)*100, draw:(dp/total)*100, away:(ap/total)*100 };
+
+    probCache[matchId] = norm;
+    renderProbBar(matchId, home, away, norm);
+
+  } catch(err) {
+    el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Could not load probability data.</div>`;
+    console.warn("Prob bar:", err.message);
+  }
+}
+
+// ── AI MATCH PREVIEW ──────────────────────────────────────────
+// Cache so we don't re-fetch if the user closes & reopens the panel
+const aiCache = {};
+
+document.getElementById("matchesContainer").addEventListener("click", async e => {
+  const btn = e.target.closest(".ai-preview-btn");
+  if (!btn) return;
+
+  const { id, home, away, stage, kickoff } = btn.dataset;
+  const panel = document.getElementById(`ai-panel-${id}`);
+
+  // Toggle: if already open and loaded, close it
+  if (!panel.classList.contains("hidden") && !panel.classList.contains("ai-typing")) {
+    panel.classList.add("hidden");
+    btn.innerHTML = `<span class="text-base">🤖</span> AI Match Preview`;
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  btn.innerHTML = `<span class="text-base">🤖</span> Generating preview…`;
+  btn.disabled  = true;
+
+  // Return cached result if available
+  if (aiCache[id]) {
+    panel.innerHTML = aiCache[id];
+    btn.innerHTML   = `<span class="text-base">🤖</span> Hide Preview`;
+    btn.disabled    = false;
+    return;
+  }
+
+  // Loading state
+  panel.innerHTML = `<div class="text-slate-400 text-xs animate-pulse">🤖 Analysing ${home} vs ${away}…</div>`;
+
+  try {
+    const prompt = `You are a football (soccer) analyst providing a concise match preview for a FIFA World Cup 2026 prediction game.
+
+Match: ${home} vs ${away}
+Stage: ${stage} Stage
+Kickoff: ${kickoff}
+
+Write a short, punchy preview in this EXACT format (use these exact labels):
+
+FORM & STRENGTH
+2-3 sentences on each team's recent form, key players, and strengths/weaknesses.
+
+KEY BATTLE
+1-2 sentences on the most important tactical or individual matchup.
+
+PREDICTED SCORE
+Give a single scoreline prediction in the format "HOME X–Y AWAY" (e.g. "${home} 2–1 ${away}"). Then one sentence of reasoning.
+
+Keep the whole response under 180 words. Be confident and direct. No disclaimers mid-text.`;
+
+    const response = await fetch(ANTHROPIC_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 350,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errMsg = data?.error?.message || `HTTP ${response.status}`;
+      throw new Error(errMsg);
+    }
+
+    const fullText = data.content?.find(b => b.type === "text")?.text || "";
+    if (!fullText) throw new Error("Empty response from API");
+
+    panel.classList.remove("ai-typing");
+    panel.innerHTML = formatAIPreview(fullText, home, away);
+    aiCache[id]     = panel.innerHTML;
+    btn.innerHTML   = `<span class="text-base">🤖</span> Hide Preview`;
+
+  } catch(err) {
+    panel.innerHTML = `<div class="text-red-400 text-xs space-y-1">
+      <div>⚠️ Could not load preview.</div>
+      <div class="text-slate-500">${err.message}</div>
+      <div class="text-slate-600 mt-1">Check that your Cloudflare Worker URL is set correctly in the HTML (search for <code class="bg-slate-800 px-1 rounded">WORKER_URL</code>).</div>
+    </div>`;
+    btn.innerHTML = `<span class="text-base">🤖</span> Try Again`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function formatAIPreview(text, home, away) {
+  // Parse sections and render nicely
+  let html = "";
+
+  // Extract predicted score line for special rendering
+  const scoreMatch = text.match(/(\d+)[–\-](\d+)/);
+  const homeScore  = scoreMatch ? scoreMatch[1] : null;
+  const awayScore  = scoreMatch ? scoreMatch[2] : null;
+
+  // Split into sections by the known headings
+  const sections = [
+    { key: "FORM & STRENGTH",  label: "📋 Form & Strength" },
+    { key: "KEY BATTLE",       label: "⚔️ Key Battle" },
+    { key: "PREDICTED SCORE",  label: "🎯 AI Predicted Score" }
+  ];
+
+  let remaining = text.trim();
+
+  sections.forEach((sec, i) => {
+    const idx = remaining.toUpperCase().indexOf(sec.key);
+    if (idx === -1) return;
+
+    const afterHeading = remaining.slice(idx + sec.key.length).trim();
+    const nextIdx = sections.slice(i+1).reduce((ni, ns) => {
+      const found = afterHeading.toUpperCase().indexOf(ns.key);
+      return found !== -1 && found < ni ? found : ni;
+    }, afterHeading.length);
+
+    let body = afterHeading.slice(0, nextIdx).trim().replace(/^[:\-–]\s*/, "");
+    remaining = afterHeading.slice(nextIdx);
+
+    if (sec.key === "PREDICTED SCORE" && homeScore !== null) {
+      // Replace the scoreline line with a styled box
+      const lines = body.split("\n").filter(Boolean);
+      const scoreLine   = lines.find(l => /\d+[–\-]\d+/.test(l)) || "";
+      const reasonLines = lines.filter(l => l !== scoreLine && l.trim()).join(" ");
+      html += `<div class="ai-section-title">${sec.label}</div>
+        <div class="ai-prediction-box">
+          <div class="text-xs text-slate-500 mb-1">${home}</div>
+          <div class="ai-score">${homeScore} – ${awayScore}</div>
+          <div class="text-xs text-slate-500 mt-1">${away}</div>
+          ${reasonLines ? `<div class="text-xs text-slate-400 mt-2">${reasonLines}</div>` : ""}
+        </div>`;
+    } else {
+      html += `<div class="ai-section-title">${sec.label}</div><div>${body}</div>`;
+    }
+  });
+
+  // If parsing failed, just show raw text
+  if (!html.trim()) {
+    html = `<div>${text}</div>`;
+  }
+
+  html += `<div class="ai-disclaimer">⚠️ AI-generated preview for entertainment purposes only. Not a guarantee of outcome.</div>`;
+  return html;
+}
+
+// ── ALL PICKS TAB ─────────────────────────────────────────────
+async function renderAllPicks() {
+  const [matches, results, predSnap] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  ]);
+
+  const container = document.getElementById("allPicksContainer");
+  const emptyMsg  = document.getElementById("allPicksEmpty");
+  container.innerHTML = "";
+
+  // Build list of players sorted alphabetically, marking current user first
+  const players = [];
+  predSnap.forEach(ds => {
+    const d = ds.data();
+    players.push({ uid: ds.id, name: d.user || "Unknown", preds: d.predictions || {}, isMe: currentUser && ds.id === currentUser.uid });
+  });
+
+  if (!players.length) {
+    emptyMsg.classList.remove("hidden");
+    return;
+  }
+  emptyMsg.classList.add("hidden");
+
+  // Sort: current user first, then alphabetical
+  players.sort((a,b) => {
+    if (a.isMe) return -1;
+    if (b.isMe) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  matches.forEach(m => {
+    const result   = results[m.id];
+    const hasResult = result?.home !== undefined;
+
+    // For matches not yet locked, hide other people's picks (fair play)
+    const locked = (m.kickoffUtcMs && (m.kickoffUtcMs - Date.now()) / 60000 <= 30) || hasResult;
+
+    const card = document.createElement("div");
+    card.className = "glass rounded-2xl overflow-hidden";
+
+    // ── Match header ──
+    const resultHtml = hasResult
+      ? `<span class="display-font text-xl text-yellow-400 mx-1">${result.home}–${result.away}</span>
+         <span class="badge-completed px-2 py-0.5 rounded-full text-xs font-medium ml-1">FT</span>`
+      : locked
+        ? `<span class="text-slate-500 text-xs ml-1">Locked · awaiting result</span>`
+        : `<span class="text-slate-600 text-xs ml-1">Picks hidden until kickoff</span>`;
+
+    card.innerHTML = `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-4 bg-slate-900/60 border-b border-white/5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+          <span class="font-bold text-white">${m.home}</span>
+          <span class="text-slate-500 text-sm">vs</span>
+          <span class="font-bold text-white">${m.away}</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          ${resultHtml}
+          <span class="text-slate-600 text-xs hidden sm:inline">·</span>
+          <span class="text-slate-500 text-xs">${fmtLocal(m.kickoffUtcMs)}</span>
+        </div>
+      </div>`;
+
+    // ── Player rows ──
+    const rowsWrap = document.createElement("div");
+    rowsWrap.className = "divide-y divide-white/5";
+
+    players.forEach(p => {
+      const pred = p.preds[m.id];
+      const hasPred = pred && pred.home != null && pred.away != null;
+
+      let pickClass = "pick-none";
+      let pickLabel = "—";
+      let pointsHtml = "";
+      let icon = "";
+
+      if (!locked && !p.isMe) {
+        // Hide other players' picks before lockout
+        pickClass = "pick-none";
+        pickLabel = "Hidden";
+        icon = "🔒";
+      } else if (!hasPred) {
+        pickClass = "pick-none";
+        pickLabel = "No pick";
+        icon = "—";
+      } else if (!hasResult) {
+        pickClass = "pick-pending";
+        pickLabel = `${pred.home}–${pred.away}`;
+        icon = "⏳";
+      } else {
+        const mul = m.stage === "Knockout" ? 1.5 : 1;
+        if (pred.home === result.home && pred.away === result.away) {
+          pickClass  = "pick-exact";
+          pickLabel  = `${pred.home}–${pred.away}`;
+          icon       = "🎯";
+          const pts  = 3 * mul;
+          pointsHtml = `<span class="text-green-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
+        } else if (getOutcome(pred.home, pred.away) === getOutcome(result.home, result.away)) {
+          pickClass  = "pick-correct";
+          pickLabel  = `${pred.home}–${pred.away}`;
+          icon       = "✅";
+          const pts  = 1 * mul;
+          pointsHtml = `<span class="text-yellow-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
+        } else {
+          pickClass  = "pick-wrong";
+          pickLabel  = `${pred.home}–${pred.away}`;
+          icon       = "❌";
+          pointsHtml = `<span class="text-slate-600 text-xs ml-2">0 pts</span>`;
+        }
+      }
+
+      const row = document.createElement("div");
+      row.className = `flex items-center justify-between gap-3 px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
+      row.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="user-avatar flex-shrink-0" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${p.name.slice(0,2).toUpperCase()}</div>
+          <span class="text-sm font-medium truncate">${p.name}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="${pickClass} pick-score rounded-lg px-3 py-1">${icon} ${pickLabel}</span>
+          ${pointsHtml}
+        </div>`;
+      rowsWrap.appendChild(row);
+    });
+
+    card.appendChild(rowsWrap);
+    container.appendChild(card);
+  });
+
+  if (!matches.length) {
+    emptyMsg.classList.remove("hidden");
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => { b.classList.remove("tab-active"); b.classList.add("bg-slate-800"); });
+    btn.classList.add("tab-active"); btn.classList.remove("bg-slate-800");
+    document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
+    document.getElementById(btn.dataset.tab).classList.remove("hidden");
+    if (btn.dataset.tab==="predictionsTab") renderAllPicks();
+    if (btn.dataset.tab==="resultsTab")     renderResultsTab();
+    if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
+    if (btn.dataset.tab==="adminTab")       { if(adminUnlocked) renderMatches(); }
+  });
+});
+
+// ── AUTO-RERENDER ─────────────────────────────────────────────
+setInterval(() => {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "predictTab") renderMatches();
+}, 60000);
+
+// ── REALTIME ──────────────────────────────────────────────────
+onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); });
+onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); });
+onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); });
+
+function renderAllPicksIfActive() {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "predictionsTab") renderAllPicks();
+}
+
+// ── CONFIRM MODAL ─────────────────────────────────────────────
+let _cb = null;
+function showConfirm(title, body, cb) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").textContent  = body;
+  _cb = cb;
+  const m = document.getElementById("confirmModal");
+  m.classList.remove("hidden"); m.classList.add("flex");
+}
+function hideConfirm() {
+  const m = document.getElementById("confirmModal");
+  m.classList.add("hidden"); m.classList.remove("flex"); _cb = null;
+}
+document.getElementById("modalCancel").addEventListener("click", hideConfirm);
+document.getElementById("confirmModal").addEventListener("click", e => { if(e.target===e.currentTarget) hideConfirm(); });
+document.getElementById("modalConfirm").addEventListener("click", async () => {
+  const btn = document.getElementById("modalConfirm");
+  btn.textContent = "Deleting…"; btn.disabled = true;
+  try { if(_cb) await _cb(); } finally { btn.textContent="Yes, Delete"; btn.disabled=false; hideConfirm(); }
+});
+
+// ── RESET ─────────────────────────────────────────────────────
+async function delCol(name) {
+  const snap = await getDocs(collection(db, name));
+  await Promise.all(snap.docs.map(d => deleteDoc(doc(db, name, d.id))));
+}
+document.getElementById("resetPredictionsBtn").addEventListener("click", () =>
+  showConfirm("Clear All Predictions",
+    "Permanently deletes every player's predictions. Matches and results are kept. Cannot be undone.",
+    async () => { await delCol("predictions"); renderMatches(); calculateLeaderboard(); })
+);
+document.getElementById("resetAllBtn").addEventListener("click", () =>
+  showConfirm("Reset Entire Game",
+    "Permanently deletes ALL matches, results, and predictions. Cannot be undone.",
+    async () => { await Promise.all(["matches","results","predictions"].map(delCol)); renderMatches(); renderResultsTab(); calculateLeaderboard(); })
+);
+
+</script>
+</body>
+</html>
