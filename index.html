@@ -371,6 +371,7 @@
       <nav class="flex gap-2 flex-wrap">
         <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 All Picks</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Tournament</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
@@ -458,6 +459,138 @@
 
   </section>
 
+  <!-- TOURNAMENT TAB -->
+  <section id="tournamentTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Tournament Picks</h2>
+      <p class="text-slate-400 text-sm">Pick the cup winner and Golden Boot top scorer · Locks at first kickoff</p>
+
+      <div class="flex flex-wrap gap-3 mt-4 text-xs">
+        <span class="badge-knockout rounded-lg px-3 py-1.5 font-medium">🥇 Champion 1st choice: +10 pts</span>
+        <span class="badge-group rounded-lg px-3 py-1.5 font-medium">🥈 2nd choice: +5 pts</span>
+        <span class="badge-completed rounded-lg px-3 py-1.5 font-medium">🥉 3rd choice: +2 pts</span>
+        <span class="bg-orange-500/15 border border-orange-500/30 text-orange-300 rounded-lg px-3 py-1.5 font-medium">⚽ Top scorer: +8 pts</span>
+      </div>
+    </div>
+
+    <!-- Lock banner for tournament picks -->
+    <div id="tournamentLockBanner" class="hidden bg-red-900/40 border border-red-500/50 rounded-2xl p-4 flex items-center gap-3">
+      <span class="text-2xl">🔒</span>
+      <div>
+        <div class="font-bold text-red-300">Tournament picks locked</div>
+        <div class="text-sm text-red-400">The first match has kicked off. Your champion and top-scorer picks can no longer be changed.</div>
+      </div>
+    </div>
+
+    <!-- Filter dropdown to view picks by player -->
+    <div class="glass rounded-2xl p-5">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <label class="text-sm font-medium text-slate-300 whitespace-nowrap">View picks for:</label>
+        <select id="tournamentPlayerFilter"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-yellow-500 transition text-white flex-1">
+          <option value="__me">My picks (edit mode)</option>
+        </select>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">
+        Other players' picks become visible after the first kickoff.
+      </p>
+    </div>
+
+    <!-- ── EDIT MODE: shown when filter is "My picks" and not locked ── -->
+    <div id="tournamentEditMode" class="space-y-5">
+
+      <!-- Champion picks -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-4">🏆 World Cup Winner</h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1.5">🥇 1st choice <span class="text-slate-500 font-normal normal-case">(+10 pts)</span></label>
+            <select id="champion1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+              <option value="">— Select a nation —</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 font-bold uppercase tracking-widest mb-1.5">🥈 2nd choice <span class="text-slate-500 font-normal normal-case">(+5 pts)</span></label>
+            <select id="champion2" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+              <option value="">— Select a nation —</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-amber-600 font-bold uppercase tracking-widest mb-1.5">🥉 3rd choice <span class="text-slate-500 font-normal normal-case">(+2 pts)</span></label>
+            <select id="champion3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+              <option value="">— Select a nation —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top scorer pick -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-2">⚽ Golden Boot</h3>
+        <p class="text-slate-400 text-sm mb-4">Search a striker by name or country (+8 pts if correct)</p>
+
+        <div class="relative">
+          <input type="text" id="topScorerSearch" placeholder="Type to search strikers… e.g. Kane, France, Mbappé"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600"
+            autocomplete="off" />
+          <button id="topScorerClear" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xl leading-none">×</button>
+
+          <div id="topScorerResults" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-72 overflow-y-auto z-30"></div>
+        </div>
+
+        <!-- Currently selected scorer -->
+        <div id="topScorerSelected" class="hidden mt-4 bg-yellow-400/8 border border-yellow-400/30 rounded-xl p-3 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-2xl flex-shrink-0">⚽</span>
+            <div class="min-w-0">
+              <div class="text-xs text-slate-400 uppercase tracking-widest">Your pick</div>
+              <div id="topScorerSelectedName" class="font-bold text-white truncate"></div>
+              <div id="topScorerSelectedMeta" class="text-xs text-slate-400 truncate"></div>
+            </div>
+          </div>
+          <button id="topScorerRemove" class="text-xs text-red-400 hover:text-red-300 border border-red-500/40 hover:border-red-400 px-2.5 py-1 rounded-lg transition">Remove</button>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <div class="glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="text-sm text-slate-400">
+          <span id="tournamentSaveStatus">Pick locked in only after you save.</span>
+        </div>
+        <button id="saveTournamentBtn"
+          class="bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-bold px-7 py-3 rounded-xl transition-all">
+          💾 Save Tournament Picks
+        </button>
+      </div>
+    </div>
+
+    <!-- ── VIEW MODE: shown when viewing another player's picks, or after lock ── -->
+    <div id="tournamentViewMode" class="hidden space-y-5">
+      <div class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-1">🏆 Champion Picks</h3>
+        <p class="text-slate-400 text-sm mb-4" id="tournamentViewSubtitle">—</p>
+        <div id="tournamentViewChampions" class="space-y-3"></div>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-4">⚽ Top Scorer Pick</h3>
+        <div id="tournamentViewScorer" class="text-slate-300"></div>
+      </div>
+      <div id="tournamentViewMatches" class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-4">📋 Match Predictions</h3>
+        <div id="tournamentViewMatchList" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
+
+    <!-- ── EMPTY: player selected but has no tournament picks ── -->
+    <div id="tournamentViewEmpty" class="hidden glass rounded-2xl p-10 text-center">
+      <div class="text-5xl mb-3">🤷</div>
+      <div class="text-slate-400">This player hasn't saved tournament picks.</div>
+    </div>
+
+  </section>
+
   <!-- RESULTS TAB -->
   <section id="resultsTab" class="tab-content hidden space-y-5">
     <div class="glass rounded-2xl p-6">
@@ -485,6 +618,7 @@
               <th class="py-3 px-3">Player</th>
               <th class="py-3 px-3">Exact Scores</th>
               <th class="py-3 px-3">Correct Results</th>
+              <th class="py-3 px-3">Bonus</th>
               <th class="py-3 px-3">Points</th>
             </tr>
           </thead>
@@ -523,7 +657,34 @@
         <span class="text-xl">⏰</span>
         <div>
           <div class="font-bold text-yellow-300 text-sm">Auto-Lock</div>
-          <div class="text-slate-300 text-sm mt-0.5">Predictions lock automatically at kickoff. Plan ahead!</div>
+          <div class="text-slate-300 text-sm mt-0.5">Match predictions lock automatically at kickoff. Plan ahead!</div>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-white/10">
+        <h3 class="display-font text-2xl text-yellow-400 mb-4">Tournament Bonuses</h3>
+        <p class="text-slate-400 text-sm mb-4">Long-shot picks that earn big bonus points if you call them right. <strong class="text-yellow-300">Locked when the first match kicks off — no changes after that.</strong></p>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-yellow-500/30">
+            <div class="text-2xl mb-2">🥇</div>
+            <div class="display-font text-xl text-yellow-400">+10 pts</div>
+            <div class="text-xs text-slate-400 mt-1">Champion (1st choice)</div>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-600">
+            <div class="text-2xl mb-2">🥈</div>
+            <div class="display-font text-xl text-slate-200">+5 pts</div>
+            <div class="text-xs text-slate-400 mt-1">Champion (2nd choice)</div>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-amber-700/40">
+            <div class="text-2xl mb-2">🥉</div>
+            <div class="display-font text-xl text-amber-500">+2 pts</div>
+            <div class="text-xs text-slate-400 mt-1">Champion (3rd choice)</div>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-4 border border-orange-500/30">
+            <div class="text-2xl mb-2">⚽</div>
+            <div class="display-font text-xl text-orange-400">+8 pts</div>
+            <div class="text-xs text-slate-400 mt-1">Golden Boot top scorer</div>
+          </div>
         </div>
       </div>
     </div>
@@ -690,6 +851,54 @@
         <h3 class="display-font text-xl text-yellow-400 mb-4">Enter Results</h3>
         <div id="adminMatches" class="space-y-3">
           <p class="text-slate-500 text-sm">No matches added yet.</p>
+        </div>
+      </div>
+
+      <!-- Tournament Result (Champion + Top Scorer) -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-1">Tournament Result</h3>
+        <p class="text-slate-500 text-xs mb-4">Enter once known — this awards bonus points for champion and top-scorer picks.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">🏆 World Cup Champion</label>
+            <input type="text" id="adminChampion" placeholder="e.g. Argentina"
+              class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+            <p class="text-xs text-slate-500 mt-1">Must match exactly how the team appears in matches.</p>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">⚽ Top Scorer (Golden Boot)</label>
+            <input type="text" id="adminTopScorer" placeholder="e.g. Kylian Mbappé"
+              class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+            <p class="text-xs text-slate-500 mt-1">Must match exactly how the player appears in the striker list.</p>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <button id="saveTournamentResultBtn" class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-5 py-2.5 rounded-xl transition text-sm">
+            Save Tournament Result
+          </button>
+        </div>
+      </div>
+
+      <!-- Striker list editor -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-1">Top Scorer Candidates</h3>
+        <p class="text-slate-500 text-xs mb-4">Strikers and attackers players can choose from. Format one per line: <code class="text-slate-400">Player Name | Country | Position</code> · Defaults loaded if empty.</p>
+
+        <textarea id="adminStrikerList" rows="10" placeholder="Kylian Mbappé | France | ST
+Erling Haaland | Norway | ST
+..."
+          class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600 text-sm font-mono"></textarea>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-3">
+          <div class="flex gap-2">
+            <button id="loadDefaultStrikersBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs transition">Load defaults</button>
+            <span id="strikerCount" class="text-xs text-slate-500 self-center"></span>
+          </div>
+          <button id="saveStrikersBtn" class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-5 py-2.5 rounded-xl transition text-sm">
+            Save Striker List
+          </button>
         </div>
       </div>
 
@@ -1021,6 +1230,196 @@ async function getLocked() {
 }
 async function setLocked(v) { await setDoc(doc(db,"settings","predictionLock"),{locked:v}); }
 
+// ══════════════════════════════════════════════════════════════
+// TOURNAMENT (Champion + Top Scorer) — data layer & helpers
+// ══════════════════════════════════════════════════════════════
+
+// Tournament-pick scoring
+const POINTS_CHAMPION_1 = 10;
+const POINTS_CHAMPION_2 = 5;
+const POINTS_CHAMPION_3 = 2;
+const POINTS_TOP_SCORER = 8;
+
+// All 48 nations that qualified for the 2026 World Cup (fallback list).
+// If a team name appears in any `matches` doc, that's the source of truth and
+// gets merged in too. Edit this list if your tournament uses different naming.
+const DEFAULT_NATIONS = [
+  "Argentina","Australia","Austria","Belgium","Brazil","Canada","Cape Verde",
+  "Colombia","Croatia","Curaçao","DR Congo","Ecuador","Egypt","England","France",
+  "Germany","Ghana","Haiti","Iran","Italy","Ivory Coast","Jamaica","Japan",
+  "Jordan","Mexico","Morocco","Netherlands","New Zealand","Nigeria","Norway",
+  "Panama","Paraguay","Peru","Poland","Portugal","Qatar","Saudi Arabia",
+  "Scotland","Senegal","Serbia","South Africa","South Korea","Spain","Sweden",
+  "Switzerland","Tunisia","United States","Uruguay","Uzbekistan","Wales"
+];
+
+// Default striker / attacker shortlist — admin can edit anytime.
+// Format: "Name | Country | Position"
+const DEFAULT_STRIKERS = `Kylian Mbappé | France | ST
+Erling Haaland | Norway | ST
+Harry Kane | England | ST
+Lionel Messi | Argentina | RW
+Lautaro Martínez | Argentina | ST
+Julián Álvarez | Argentina | ST
+Vinícius Júnior | Brazil | LW
+Rodrygo | Brazil | RW
+Neymar | Brazil | LW
+Raphinha | Brazil | RW
+Cristiano Ronaldo | Portugal | ST
+Bruno Fernandes | Portugal | AM
+Rafael Leão | Portugal | LW
+Ousmane Dembélé | France | RW
+Marcus Thuram | France | ST
+Bukayo Saka | England | RW
+Jude Bellingham | England | AM
+Phil Foden | England | AM
+Lamine Yamal | Spain | RW
+Mikel Oyarzabal | Spain | ST
+Álvaro Morata | Spain | ST
+Nico Williams | Spain | LW
+Pedri | Spain | AM
+Romelu Lukaku | Belgium | ST
+Kevin De Bruyne | Belgium | AM
+Memphis Depay | Netherlands | ST
+Cody Gakpo | Netherlands | LW
+Donyell Malen | Netherlands | RW
+Khvicha Kvaratskhelia | Georgia | LW
+Florian Wirtz | Germany | AM
+Kai Havertz | Germany | ST
+Niclas Füllkrug | Germany | ST
+Jamal Musiala | Germany | AM
+Serhou Guirassy | Guinea | ST
+Victor Osimhen | Nigeria | ST
+Mohamed Salah | Egypt | RW
+Sadio Mané | Senegal | LW
+Achraf Hakimi | Morocco | RB
+Youssoufa Moukoko | Germany | ST
+Christian Pulisic | United States | RW
+Folarin Balogun | United States | ST
+Timothy Weah | United States | RW
+Hirving Lozano | Mexico | LW
+Raúl Jiménez | Mexico | ST
+Santiago Giménez | Mexico | ST
+Alphonso Davies | Canada | LB
+Jonathan David | Canada | ST
+Cyle Larin | Canada | ST
+Darwin Núñez | Uruguay | ST
+Federico Valverde | Uruguay | CM
+Luis Suárez | Uruguay | ST
+Luis Díaz | Colombia | LW
+James Rodríguez | Colombia | AM
+Mateo Retegui | Italy | ST
+Federico Chiesa | Italy | RW
+Dušan Vlahović | Serbia | ST
+Aleksandar Mitrović | Serbia | ST
+Robert Lewandowski | Poland | ST
+Wout Weghorst | Netherlands | ST
+Takefusa Kubo | Japan | RW
+Kaoru Mitoma | Japan | LW
+Son Heung-min | South Korea | LW
+Hwang Hee-chan | South Korea | ST
+Mehdi Taremi | Iran | ST
+Sardar Azmoun | Iran | ST
+Mohammed Kudus | Ghana | RW
+Inaki Williams | Ghana | LW`;
+
+function parseStrikerList(text) {
+  return text.split("\n")
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !line.startsWith("#"))
+    .map(line => {
+      const parts = line.split("|").map(s => s.trim());
+      return {
+        name:     parts[0] || "",
+        country:  parts[1] || "",
+        position: parts[2] || "ST"
+      };
+    })
+    .filter(p => p.name);
+}
+
+async function getStrikerList() {
+  try {
+    const d = await getDoc(doc(db,"settings","strikerList"));
+    if (d.exists() && d.data().players?.length) return d.data().players;
+  } catch(_){}
+  return parseStrikerList(DEFAULT_STRIKERS);
+}
+
+async function saveStrikerList(players) {
+  await setDoc(doc(db,"settings","strikerList"), { players, updatedAt: Date.now() });
+}
+
+async function getTournamentResult() {
+  try {
+    const d = await getDoc(doc(db,"settings","tournamentResult"));
+    if (d.exists()) return d.data();
+  } catch(_){}
+  return { champion: "", topScorer: "" };
+}
+
+async function saveTournamentResult(champion, topScorer) {
+  await setDoc(doc(db,"settings","tournamentResult"), {
+    champion: champion.trim(),
+    topScorer: topScorer.trim(),
+    updatedAt: Date.now()
+  });
+}
+
+async function getMyTournamentPicks() {
+  if (!currentUser) return null;
+  try {
+    const d = await getDoc(doc(db,"tournamentPicks",currentUser.uid));
+    return d.exists() ? d.data() : null;
+  } catch(_){
+    return null;
+  }
+}
+
+async function getAllTournamentPicks() {
+  const snap = await getDocs(collection(db,"tournamentPicks"));
+  const obj = {};
+  snap.forEach(d => { obj[d.id] = d.data(); });
+  return obj;
+}
+
+async function saveMyTournamentPicks(picks) {
+  if (!currentUser) throw new Error("Not signed in");
+  // Resolve display name
+  let name = currentUser.displayName || currentUser.email.split("@")[0];
+  try {
+    const ud = await getDoc(doc(db,"users",currentUser.uid));
+    if (ud.exists() && ud.data().displayName) name = ud.data().displayName;
+  } catch(_){}
+  await setDoc(doc(db,"tournamentPicks",currentUser.uid), {
+    user: name,
+    uid: currentUser.uid,
+    ...picks,
+    updatedAt: Date.now()
+  });
+}
+
+// Tournament picks lock at the FIRST match kickoff, regardless of which match
+async function tournamentPicksLocked() {
+  const matches = await getMatches();
+  if (!matches.length) return false;
+  const firstKickoff = Math.min(...matches.map(m => m.kickoffUtcMs || Infinity));
+  if (!isFinite(firstKickoff)) return false;
+  return Date.now() >= firstKickoff;
+}
+
+// Build a sorted unique nation list from matches + defaults
+async function getAllNations() {
+  const matches = await getMatches();
+  const set = new Set(DEFAULT_NATIONS);
+  matches.forEach(m => {
+    if (m.home) set.add(m.home.trim());
+    if (m.away) set.add(m.away.trim());
+  });
+  return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
 // ── LOAD USER PREDICTIONS INTO INPUTS ─────────────────────────
 async function loadMyPredictions() {
   if (!currentUser) return;
@@ -1276,23 +1675,56 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
 
 // ── LEADERBOARD ───────────────────────────────────────────────
 async function calculateLeaderboard() {
-  const [matches, results, predSnap] = await Promise.all([
-    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  const [matches, results, predSnap, tPicks, tResult] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions")),
+    getAllTournamentPicks(), getTournamentResult()
   ]);
   const board = [];
 
-  predSnap.forEach(ds => {
-    const data = ds.data();
-    let pts=0, exact=0, outcome=0;
+  // Track everyone who has either match predictions OR tournament picks
+  const allUids = new Set();
+  predSnap.forEach(ds => allUids.add(ds.id));
+  Object.keys(tPicks).forEach(uid => allUids.add(uid));
+
+  const predByUid = {};
+  predSnap.forEach(ds => { predByUid[ds.id] = ds.data(); });
+
+  const champion = (tResult.champion || "").trim().toLowerCase();
+  const topScorer = (tResult.topScorer || "").trim().toLowerCase();
+
+  allUids.forEach(uid => {
+    const data = predByUid[uid] || {};
+    const tp = tPicks[uid] || {};
+    const userName = data.user || tp.user || "Unknown";
+
+    let matchPts = 0, exact = 0, outcome = 0;
     matches.forEach(m => {
       const pred = data.predictions?.[m.id];
       const act  = results[m.id];
-      if (!pred || act?.home===undefined) return;
-      const mul = m.stage==="Knockout" ? 1.5 : 1;
-      if (pred.home===act.home && pred.away===act.away) { pts+=3*mul; exact++; return; }
-      if (getOutcome(pred.home,pred.away)===getOutcome(act.home,act.away)) { pts+=1*mul; outcome++; }
+      if (!pred || act?.home === undefined) return;
+      const mul = m.stage === "Knockout" ? 1.5 : 1;
+      if (pred.home === act.home && pred.away === act.away) { matchPts += 3*mul; exact++; return; }
+      if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) { matchPts += 1*mul; outcome++; }
     });
-    board.push({ user: data.user, exact, outcome, pts, isMe: currentUser && ds.id===currentUser.uid });
+
+    // Tournament bonus points (only awarded when admin has entered the actual result)
+    let bonusPts = 0;
+    if (champion) {
+      if ((tp.champion1||"").trim().toLowerCase() === champion) bonusPts += POINTS_CHAMPION_1;
+      else if ((tp.champion2||"").trim().toLowerCase() === champion) bonusPts += POINTS_CHAMPION_2;
+      else if ((tp.champion3||"").trim().toLowerCase() === champion) bonusPts += POINTS_CHAMPION_3;
+    }
+    if (topScorer && (tp.topScorer||"").trim().toLowerCase() === topScorer) {
+      bonusPts += POINTS_TOP_SCORER;
+    }
+
+    const pts = matchPts + bonusPts;
+    board.push({
+      user: userName,
+      exact, outcome,
+      matchPts, bonusPts, pts,
+      isMe: currentUser && uid === currentUser.uid
+    });
   });
 
   board.sort((a,b) => b.pts - a.pts);
@@ -1308,16 +1740,18 @@ async function calculateLeaderboard() {
     const rc = rank===1?"rank-gold":rank===2?"rank-silver":rank===3?"rank-bronze":"";
     const re = rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":rank;
     const pts = e.pts%1===0?e.pts:e.pts.toFixed(1);
+    const bonus = e.bonusPts%1===0?e.bonusPts:e.bonusPts.toFixed(1);
     const row = document.createElement("tr");
     row.className = `border-b border-slate-800 transition ${e.isMe?"bg-yellow-400/5":"hover:bg-white/3"}`;
     row.innerHTML = `
       <td class="py-4 px-3 font-bold display-font text-lg ${rc}">${re}</td>
       <td class="py-4 px-3 font-medium">
-        ${e.user}
+        ${escapeHtml(e.user)}
         ${e.isMe?'<span class="ml-2 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full">You</span>':""}
       </td>
       <td class="py-4 px-3 text-slate-300">${e.exact}</td>
       <td class="py-4 px-3 text-slate-300">${e.outcome}</td>
+      <td class="py-4 px-3 text-orange-300 text-sm">${e.bonusPts>0 ? "+"+bonus : "—"}</td>
       <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>`;
     tbody.appendChild(row);
   });
@@ -1700,6 +2134,482 @@ async function renderAllPicks() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// TOURNAMENT TAB — UI handlers
+// ══════════════════════════════════════════════════════════════
+
+// In-memory current selections (mirror Firestore once loaded)
+let myTournamentPicks = {
+  champion1: "",
+  champion2: "",
+  champion3: "",
+  topScorer: ""   // store as plain string "Player Name (Country)" — works even if striker list changes later
+};
+let currentStrikerList = [];
+
+// Populate the three champion dropdowns
+async function populateChampionDropdowns() {
+  const nations = await getAllNations();
+  ["champion1","champion2","champion3"].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const currentVal = myTournamentPicks[id] || "";
+    sel.innerHTML = `<option value="">— Select a nation —</option>` +
+      nations.map(n => `<option value="${escapeHtml(n)}"${n===currentVal?" selected":""}>${escapeHtml(n)}</option>`).join("");
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[c]));
+}
+
+// Render selected top scorer summary
+function renderSelectedScorer() {
+  const wrap = document.getElementById("topScorerSelected");
+  const name = document.getElementById("topScorerSelectedName");
+  const meta = document.getElementById("topScorerSelectedMeta");
+  const sel = myTournamentPicks.topScorer;
+  if (!sel) {
+    wrap.classList.add("hidden");
+    return;
+  }
+  // Try to enrich from striker list
+  const match = currentStrikerList.find(p => p.name === sel);
+  name.textContent = sel;
+  meta.textContent = match ? `${match.country} · ${match.position}` : "";
+  wrap.classList.remove("hidden");
+}
+
+// Striker search dropdown
+function setupStrikerSearch() {
+  const input   = document.getElementById("topScorerSearch");
+  const results = document.getElementById("topScorerResults");
+  const clearBtn = document.getElementById("topScorerClear");
+  if (!input || !results) return;
+
+  function closeResults() {
+    results.classList.add("hidden");
+    results.innerHTML = "";
+  }
+
+  function showMatches(q) {
+    const query = q.trim().toLowerCase();
+    if (!query) { closeResults(); return; }
+
+    const matches = currentStrikerList.filter(p =>
+      p.name.toLowerCase().includes(query) ||
+      p.country.toLowerCase().includes(query) ||
+      p.position.toLowerCase() === query
+    ).slice(0, 30);
+
+    if (!matches.length) {
+      results.innerHTML = `<div class="px-4 py-3 text-sm text-slate-500">No matches. Try a different name or country.</div>`;
+      results.classList.remove("hidden");
+      return;
+    }
+
+    results.innerHTML = matches.map(p => `
+      <button type="button" data-name="${escapeHtml(p.name)}"
+        class="striker-pick w-full text-left px-4 py-2.5 hover:bg-yellow-400/10 transition flex items-center justify-between gap-3 border-b border-white/5 last:border-0">
+        <div class="min-w-0">
+          <div class="font-medium text-white text-sm truncate">${escapeHtml(p.name)}</div>
+          <div class="text-xs text-slate-500 truncate">${escapeHtml(p.country)}</div>
+        </div>
+        <span class="text-xs text-yellow-400/70 font-mono flex-shrink-0">${escapeHtml(p.position)}</span>
+      </button>
+    `).join("");
+    results.classList.remove("hidden");
+  }
+
+  input.addEventListener("input", () => {
+    showMatches(input.value);
+    clearBtn.classList.toggle("hidden", !input.value);
+  });
+  input.addEventListener("focus", () => { if (input.value) showMatches(input.value); });
+  input.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeResults();
+  });
+
+  clearBtn.addEventListener("click", () => {
+    input.value = "";
+    clearBtn.classList.add("hidden");
+    closeResults();
+    input.focus();
+  });
+
+  results.addEventListener("click", e => {
+    const btn = e.target.closest(".striker-pick");
+    if (!btn) return;
+    myTournamentPicks.topScorer = btn.dataset.name;
+    input.value = "";
+    clearBtn.classList.add("hidden");
+    closeResults();
+    renderSelectedScorer();
+  });
+
+  document.getElementById("topScorerRemove").addEventListener("click", () => {
+    myTournamentPicks.topScorer = "";
+    renderSelectedScorer();
+  });
+
+  // Click outside to close
+  document.addEventListener("click", e => {
+    if (!input.contains(e.target) && !results.contains(e.target)) {
+      closeResults();
+    }
+  });
+}
+
+// Hook up the three dropdowns
+function setupChampionDropdowns() {
+  ["champion1","champion2","champion3"].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.addEventListener("change", () => { myTournamentPicks[id] = sel.value; });
+  });
+}
+
+// Populate the player filter dropdown (loaded each time the tab opens so it stays fresh)
+async function populatePlayerFilter() {
+  const filter = document.getElementById("tournamentPlayerFilter");
+  if (!filter) return;
+  const currentVal = filter.value || "__me";
+  const allPicks = await getAllTournamentPicks();
+  const players = Object.entries(allPicks)
+    .map(([uid, d]) => ({ uid, name: d.user || "Unknown" }))
+    .sort((a,b) => a.name.localeCompare(b.name));
+
+  let html = `<option value="__me">My picks (edit mode)</option>`;
+  if (players.length) {
+    html += `<option disabled>──── Other players ────</option>`;
+    html += players
+      .filter(p => !currentUser || p.uid !== currentUser.uid)
+      .map(p => `<option value="${escapeHtml(p.uid)}">${escapeHtml(p.name)}</option>`)
+      .join("");
+  }
+  filter.innerHTML = html;
+  filter.value = currentVal;
+}
+
+// View someone else's tournament + match picks (read-only)
+async function renderTournamentView(uid) {
+  const [allPicks, tResult, locked, matches, results, predSnap] = await Promise.all([
+    getAllTournamentPicks(),
+    getTournamentResult(),
+    tournamentPicksLocked(),
+    getMatches(),
+    getResults(),
+    getDocs(collection(db,"predictions"))
+  ]);
+
+  const editEl   = document.getElementById("tournamentEditMode");
+  const viewEl   = document.getElementById("tournamentViewMode");
+  const emptyEl  = document.getElementById("tournamentViewEmpty");
+
+  editEl.classList.add("hidden");
+  emptyEl.classList.add("hidden");
+
+  const data = allPicks[uid];
+  if (!data) {
+    viewEl.classList.add("hidden");
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  viewEl.classList.remove("hidden");
+
+  // Subtitle
+  document.getElementById("tournamentViewSubtitle").textContent = `Viewing picks for: ${data.user || "—"}`;
+
+  // Champion rows
+  const champWrap = document.getElementById("tournamentViewChampions");
+  const champion = (tResult.champion || "").trim();
+  const rows = [
+    { label: "🥇 1st choice", pts: POINTS_CHAMPION_1, val: data.champion1, accent: "border-yellow-500/50" },
+    { label: "🥈 2nd choice", pts: POINTS_CHAMPION_2, val: data.champion2, accent: "border-slate-500/50" },
+    { label: "🥉 3rd choice", pts: POINTS_CHAMPION_3, val: data.champion3, accent: "border-amber-700/50" }
+  ];
+  champWrap.innerHTML = rows.map(r => {
+    const correct = champion && r.val && r.val.trim().toLowerCase() === champion.toLowerCase();
+    return `
+      <div class="bg-slate-900/50 border ${correct?"border-green-500/60":r.accent} rounded-xl p-4 flex items-center justify-between gap-3">
+        <div>
+          <div class="text-xs text-slate-400 uppercase tracking-widest">${r.label}</div>
+          <div class="font-bold text-white text-lg mt-0.5">${r.val ? escapeHtml(r.val) : "<span class='text-slate-600 italic font-normal text-sm'>not picked</span>"}</div>
+        </div>
+        <div class="text-right">
+          ${correct
+            ? `<div class="display-font text-xl text-green-400">+${r.pts} pts</div><div class="text-xs text-green-400/80">Correct!</div>`
+            : champion
+              ? `<div class="text-slate-600 text-xs">0 pts</div>`
+              : `<div class="text-slate-500 text-xs">Up to +${r.pts}</div>`
+          }
+        </div>
+      </div>`;
+  }).join("");
+
+  // Top scorer row
+  const scorerEl = document.getElementById("tournamentViewScorer");
+  const topScorer = (tResult.topScorer || "").trim();
+  if (data.topScorer) {
+    const correct = topScorer && data.topScorer.trim().toLowerCase() === topScorer.toLowerCase();
+    scorerEl.innerHTML = `
+      <div class="bg-slate-900/50 border ${correct?"border-green-500/60":"border-orange-500/30"} rounded-xl p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">⚽</span>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-widest">Top scorer pick</div>
+            <div class="font-bold text-white text-lg">${escapeHtml(data.topScorer)}</div>
+          </div>
+        </div>
+        <div class="text-right">
+          ${correct
+            ? `<div class="display-font text-xl text-green-400">+${POINTS_TOP_SCORER} pts</div><div class="text-xs text-green-400/80">Correct!</div>`
+            : topScorer
+              ? `<div class="text-slate-600 text-xs">0 pts</div>`
+              : `<div class="text-slate-500 text-xs">Up to +${POINTS_TOP_SCORER}</div>`
+          }
+        </div>
+      </div>`;
+  } else {
+    scorerEl.innerHTML = `<div class="text-slate-500 italic">No top scorer pick.</div>`;
+  }
+
+  // Match-by-match predictions for this player
+  let playerMatchData = null;
+  predSnap.forEach(ds => { if (ds.id === uid) playerMatchData = ds.data(); });
+
+  const listEl = document.getElementById("tournamentViewMatchList");
+  const matchSection = document.getElementById("tournamentViewMatches");
+  const preds = playerMatchData?.predictions || {};
+
+  if (!matches.length) {
+    matchSection.classList.add("hidden");
+  } else {
+    matchSection.classList.remove("hidden");
+    // Sort matches chronologically (ascending) for the per-player view
+    const sorted = [...matches].sort((a,b) => (a.kickoffUtcMs||0)-(b.kickoffUtcMs||0));
+    const isMe = currentUser && uid === currentUser.uid;
+    listEl.innerHTML = sorted.map(m => {
+      const pred = preds[m.id];
+      const act  = results[m.id];
+      const hasPred = pred && pred.home != null && pred.away != null;
+      const matchKickoffPassed = m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs;
+      const visible = isMe || matchKickoffPassed;  // hide other players' un-played match picks
+
+      let predStr = "—";
+      let pointsHtml = "";
+      if (visible && hasPred) {
+        predStr = `${pred.home}–${pred.away}`;
+        if (act?.home !== undefined) {
+          const mul = m.stage === "Knockout" ? 1.5 : 1;
+          if (pred.home === act.home && pred.away === act.away) {
+            const p = 3*mul;
+            pointsHtml = `<span class="text-green-400 text-xs ml-2">🎯 +${p%1===0?p:p.toFixed(1)}</span>`;
+          } else if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) {
+            const p = 1*mul;
+            pointsHtml = `<span class="text-yellow-400 text-xs ml-2">✅ +${p%1===0?p:p.toFixed(1)}</span>`;
+          } else {
+            pointsHtml = `<span class="text-slate-600 text-xs ml-2">0</span>`;
+          }
+        } else {
+          pointsHtml = `<span class="text-slate-500 text-xs ml-2">⏳</span>`;
+        }
+      } else if (visible && !hasPred) {
+        predStr = `<span class="text-slate-600 italic">no pick</span>`;
+      } else {
+        predStr = `<span class="text-slate-700">🔒 hidden</span>`;
+      }
+
+      const actStr = act?.home !== undefined ? `<span class="text-yellow-400 font-bold">${act.home}–${act.away}</span>` : `<span class="text-slate-700">—</span>`;
+      return `
+        <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg ${act?.home!==undefined?"bg-slate-900/40":"hover:bg-white/3"} border border-white/5">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="px-1.5 py-0 rounded text-[10px] font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage[0]}</span>
+            <span class="text-slate-300 truncate">${escapeHtml(m.home)} vs ${escapeHtml(m.away)}</span>
+          </div>
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <span class="text-slate-500 text-xs">Pick: <span class="font-mono">${predStr}</span>${pointsHtml}</span>
+            <span class="text-slate-500 text-xs hidden sm:inline">FT: ${actStr}</span>
+          </div>
+        </div>`;
+    }).join("");
+  }
+}
+
+// Main entry point for the tournament tab
+async function renderTournamentTab() {
+  // Load striker list + my picks + lock state in parallel
+  const [strikers, mine, locked] = await Promise.all([
+    getStrikerList(),
+    getMyTournamentPicks(),
+    tournamentPicksLocked()
+  ]);
+
+  currentStrikerList = strikers;
+
+  // Sync in-memory picks from Firestore
+  if (mine) {
+    myTournamentPicks = {
+      champion1: mine.champion1 || "",
+      champion2: mine.champion2 || "",
+      champion3: mine.champion3 || "",
+      topScorer: mine.topScorer || ""
+    };
+  }
+
+  // Populate filter dropdown (other players are added there too)
+  await populatePlayerFilter();
+
+  // Lock banner
+  document.getElementById("tournamentLockBanner").classList.toggle("hidden", !locked);
+
+  // Decide what to show based on the filter
+  const filter = document.getElementById("tournamentPlayerFilter");
+  const choice = filter.value || "__me";
+
+  const editEl  = document.getElementById("tournamentEditMode");
+  const viewEl  = document.getElementById("tournamentViewMode");
+  const emptyEl = document.getElementById("tournamentViewEmpty");
+
+  if (choice === "__me") {
+    // Show my own picks. If locked, show as read-only view of myself.
+    if (locked) {
+      editEl.classList.add("hidden");
+      if (currentUser) {
+        await renderTournamentView(currentUser.uid);
+      } else {
+        viewEl.classList.add("hidden");
+        emptyEl.classList.remove("hidden");
+      }
+    } else {
+      viewEl.classList.add("hidden");
+      emptyEl.classList.add("hidden");
+      editEl.classList.remove("hidden");
+      await populateChampionDropdowns();
+      renderSelectedScorer();
+
+      // Disable save status update
+      document.getElementById("tournamentSaveStatus").textContent =
+        mine ? `Last saved ${new Date(mine.updatedAt || Date.now()).toLocaleString()}` : "Pick locked in only after you save.";
+    }
+  } else {
+    // Viewing another player — read-only
+    editEl.classList.add("hidden");
+    await renderTournamentView(choice);
+  }
+}
+
+// Save my tournament picks
+async function saveMyTournamentPicksFromUI() {
+  if (!currentUser) { alert("Please sign in first."); return; }
+  const locked = await tournamentPicksLocked();
+  if (locked) { alert("Tournament picks are locked — the first match has already kicked off."); return; }
+
+  // Validate: no duplicate champion choices
+  const c1 = myTournamentPicks.champion1.trim();
+  const c2 = myTournamentPicks.champion2.trim();
+  const c3 = myTournamentPicks.champion3.trim();
+  const filled = [c1,c2,c3].filter(Boolean);
+  if (new Set(filled).size !== filled.length) {
+    alert("Pick three different nations for your 1st, 2nd, and 3rd champion choices.");
+    return;
+  }
+
+  const btn = document.getElementById("saveTournamentBtn");
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+  try {
+    await saveMyTournamentPicks({
+      champion1: c1,
+      champion2: c2,
+      champion3: c3,
+      topScorer: myTournamentPicks.topScorer.trim()
+    });
+    btn.textContent = "Saved ✓";
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+    calculateLeaderboard();
+    document.getElementById("tournamentSaveStatus").textContent = `Last saved ${new Date().toLocaleString()}`;
+  } catch(e) {
+    alert("Couldn't save: " + e.message);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+// Wire up tournament tab once
+function setupTournamentTab() {
+  setupChampionDropdowns();
+  setupStrikerSearch();
+
+  document.getElementById("saveTournamentBtn").addEventListener("click", saveMyTournamentPicksFromUI);
+
+  document.getElementById("tournamentPlayerFilter").addEventListener("change", () => {
+    renderTournamentTab();
+  });
+}
+
+// ── Admin: tournament result + striker list ───────────────────
+async function setupAdminTournamentControls() {
+  // Load current values into inputs
+  const [tRes, list] = await Promise.all([getTournamentResult(), getStrikerList()]);
+  document.getElementById("adminChampion").value  = tRes.champion || "";
+  document.getElementById("adminTopScorer").value = tRes.topScorer || "";
+
+  const ta = document.getElementById("adminStrikerList");
+  ta.value = list.map(p => `${p.name} | ${p.country} | ${p.position}`).join("\n");
+  document.getElementById("strikerCount").textContent = `${list.length} players`;
+}
+
+function attachAdminTournamentHandlers() {
+  document.getElementById("saveTournamentResultBtn").addEventListener("click", async () => {
+    const c = document.getElementById("adminChampion").value.trim();
+    const t = document.getElementById("adminTopScorer").value.trim();
+    const btn = document.getElementById("saveTournamentResultBtn");
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = "Saving…";
+    try {
+      await saveTournamentResult(c, t);
+      btn.textContent = "Saved ✓";
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+      calculateLeaderboard();
+    } catch(e) {
+      alert("Couldn't save: " + e.message);
+      btn.textContent = orig; btn.disabled = false;
+    }
+  });
+
+  document.getElementById("saveStrikersBtn").addEventListener("click", async () => {
+    const text = document.getElementById("adminStrikerList").value;
+    const parsed = parseStrikerList(text);
+    if (!parsed.length) { alert("List is empty — add at least one player."); return; }
+    const btn = document.getElementById("saveStrikersBtn");
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = "Saving…";
+    try {
+      await saveStrikerList(parsed);
+      document.getElementById("strikerCount").textContent = `${parsed.length} players`;
+      btn.textContent = "Saved ✓";
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+    } catch(e) {
+      alert("Couldn't save: " + e.message);
+      btn.textContent = orig; btn.disabled = false;
+    }
+  });
+
+  document.getElementById("loadDefaultStrikersBtn").addEventListener("click", () => {
+    document.getElementById("adminStrikerList").value = DEFAULT_STRIKERS;
+    const parsed = parseStrikerList(DEFAULT_STRIKERS);
+    document.getElementById("strikerCount").textContent = `${parsed.length} players (defaults — not yet saved)`;
+  });
+}
+
+// Attach admin handlers immediately so they're ready whenever the panel unlocks
+attachAdminTournamentHandlers();
+
+// Initialise the tournament tab handlers (one-time)
+setupTournamentTab();
+
 // ── TABS ──────────────────────────────────────────────────────
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1708,9 +2618,10 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
     document.getElementById(btn.dataset.tab).classList.remove("hidden");
     if (btn.dataset.tab==="predictionsTab") renderAllPicks();
+    if (btn.dataset.tab==="tournamentTab")  renderTournamentTab();
     if (btn.dataset.tab==="resultsTab")     renderResultsTab();
     if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
-    if (btn.dataset.tab==="adminTab")       { if(adminUnlocked) renderMatches(); }
+    if (btn.dataset.tab==="adminTab")       { if(adminUnlocked) { renderMatches(); setupAdminTournamentControls(); } }
   });
 });
 
@@ -1721,13 +2632,20 @@ setInterval(() => {
 }, 60000);
 
 // ── REALTIME ──────────────────────────────────────────────────
-onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); });
-onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); });
-onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); });
+onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); refreshTournamentIfActive(); });
+onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); });
+onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); });
+onSnapshot(collection(db,"tournamentPicks"), () => { calculateLeaderboard(); refreshTournamentIfActive(); });
+onSnapshot(collection(db,"settings"),    () => { calculateLeaderboard(); refreshTournamentIfActive(); });
 
 function renderAllPicksIfActive() {
   const active = document.querySelector(".tab-content:not(.hidden)");
   if (active?.id === "predictionsTab") renderAllPicks();
+}
+
+function refreshTournamentIfActive() {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "tournamentTab") renderTournamentTab();
 }
 
 // ── CONFIRM MODAL ─────────────────────────────────────────────
@@ -1758,13 +2676,17 @@ async function delCol(name) {
 }
 document.getElementById("resetPredictionsBtn").addEventListener("click", () =>
   showConfirm("Clear All Predictions",
-    "Permanently deletes every player's predictions. Matches and results are kept. Cannot be undone.",
-    async () => { await delCol("predictions"); renderMatches(); calculateLeaderboard(); })
+    "Permanently deletes every player's match predictions AND tournament picks (champion + top scorer). Matches and results are kept. Cannot be undone.",
+    async () => { await Promise.all([delCol("predictions"), delCol("tournamentPicks")]); renderMatches(); calculateLeaderboard(); })
 );
 document.getElementById("resetAllBtn").addEventListener("click", () =>
   showConfirm("Reset Entire Game",
-    "Permanently deletes ALL matches, results, and predictions. Cannot be undone.",
-    async () => { await Promise.all(["matches","results","predictions"].map(delCol)); renderMatches(); renderResultsTab(); calculateLeaderboard(); })
+    "Permanently deletes ALL matches, results, predictions, and tournament picks. Cannot be undone.",
+    async () => {
+      await Promise.all(["matches","results","predictions","tournamentPicks"].map(delCol));
+      try { await deleteDoc(doc(db,"settings","tournamentResult")); } catch(_){}
+      renderMatches(); renderResultsTab(); calculateLeaderboard();
+    })
 );
 
 </script>
