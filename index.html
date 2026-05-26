@@ -21,13 +21,74 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <meta name="theme-color" content="#f5c842">
 
-<!-- Register the service worker you made in Step 2 -->
+<!-- Register the service worker + handle PWA install button -->
 <script>
+  // ---- Service Worker ----
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js');
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('[PWA] SW registered:', reg.scope))
+        .catch(err => console.warn('[PWA] SW registration failed:', err));
     });
   }
+
+  // ---- Install button (Android Chrome / desktop Chrome / Edge) ----
+  let deferredInstallPrompt = null;
+
+  // Chrome fires this when the PWA meets installability criteria.
+  // We capture it so we can trigger the prompt from our own button.
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const btn = document.getElementById('installBtn');
+    if (btn) btn.classList.remove('hidden');
+    console.log('[PWA] Install prompt available — button shown');
+  });
+
+  // Hide the button after the app is installed
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    const btn = document.getElementById('installBtn');
+    if (btn) btn.classList.add('hidden');
+    console.log('[PWA] App installed');
+  });
+
+  // Wire up the button after the DOM is ready
+  window.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('installBtn');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log('[PWA] User choice:', outcome);
+        deferredInstallPrompt = null;
+        btn.classList.add('hidden');
+      });
+    }
+
+    // ---- iOS path (no beforeinstallprompt support on Safari) ----
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isInStandaloneMode = window.navigator.standalone === true
+      || window.matchMedia('(display-mode: standalone)').matches;
+    const tipDismissed = localStorage.getItem('iosInstallTipDismissed') === '1';
+
+    if (isIos && !isInStandaloneMode && !tipDismissed) {
+      // Wait a few seconds so it doesn't pop up before the user sees the page
+      setTimeout(() => {
+        const tip = document.getElementById('iosInstallTip');
+        if (tip) tip.classList.remove('hidden');
+      }, 4000);
+    }
+
+    const dismissBtn = document.getElementById('dismissIosTip');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        document.getElementById('iosInstallTip').classList.add('hidden');
+        try { localStorage.setItem('iosInstallTipDismissed', '1'); } catch(_) {}
+      });
+    }
+  });
 </script>
   
   <script src="https://cdn.tailwindcss.com"></script>
@@ -259,6 +320,34 @@
       </p>
     </div>
 
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PWA INSTALL BUTTON (Android/desktop Chrome)
+     iOS users get instructions via #iosInstallTip below
+══════════════════════════════════════ -->
+<button id="installBtn"
+  class="hidden fixed bottom-5 right-5 z-40 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-full shadow-2xl px-5 py-3 flex items-center gap-2 transition-all active:scale-95"
+  style="box-shadow: 0 8px 32px rgba(245,200,66,0.4);">
+  <span class="text-lg">📲</span>
+  <span class="text-sm">Install App</span>
+</button>
+
+<!-- iOS install tip (iOS doesn't support beforeinstallprompt) -->
+<div id="iosInstallTip"
+  class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-slate-900 border border-yellow-500/50 rounded-2xl px-5 py-3 shadow-2xl max-w-sm mx-4">
+  <div class="flex items-start gap-3">
+    <span class="text-2xl">📲</span>
+    <div class="flex-1">
+      <div class="text-yellow-400 font-bold text-sm">Install this app</div>
+      <div class="text-slate-300 text-xs mt-1">
+        Tap <span class="text-yellow-400 font-bold">Share</span>
+        <span class="inline-block">⬆️</span>
+        then <span class="text-yellow-400 font-bold">"Add to Home Screen"</span>
+      </div>
+    </div>
+    <button id="dismissIosTip" class="text-slate-500 hover:text-white text-lg leading-none">×</button>
   </div>
 </div>
 
