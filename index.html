@@ -370,8 +370,8 @@
     <div class="flex items-center gap-3 flex-wrap justify-end">
       <nav class="flex gap-2 flex-wrap">
         <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 All Picks</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Tournament</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 Game Picks</button>
+        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Tournament Picks</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
         <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
@@ -438,8 +438,8 @@
   <section id="predictionsTab" class="tab-content hidden space-y-5">
 
     <div class="glass rounded-2xl p-6">
-      <h2 class="display-font text-3xl text-yellow-400 mb-1">All Picks</h2>
-      <p class="text-slate-400 text-sm">Everyone's predictions match by match, compared to the final result</p>
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Game Picks</h2>
+      <p class="text-slate-400 text-sm">Everyone's match predictions, compared to the final result</p>
       <div class="flex flex-wrap gap-4 mt-4 text-xs">
         <span class="pick-exact   rounded-lg px-3 py-1.5 font-medium">🎯 Exact score (+3 pts)</span>
         <span class="pick-correct rounded-lg px-3 py-1.5 font-medium">✅ Correct result (+1 pt)</span>
@@ -1343,7 +1343,7 @@ async function getStrikerList() {
   try {
     const d = await getDoc(doc(db,"settings","strikerList"));
     if (d.exists() && d.data().players?.length) return d.data().players;
-  } catch(_){}
+  } catch(e){ console.warn("getStrikerList:", e.message); }
   return parseStrikerList(DEFAULT_STRIKERS);
 }
 
@@ -1355,7 +1355,7 @@ async function getTournamentResult() {
   try {
     const d = await getDoc(doc(db,"settings","tournamentResult"));
     if (d.exists()) return d.data();
-  } catch(_){}
+  } catch(e){ console.warn("getTournamentResult:", e.message); }
   return { champion: "", topScorer: "" };
 }
 
@@ -1372,16 +1372,22 @@ async function getMyTournamentPicks() {
   try {
     const d = await getDoc(doc(db,"tournamentPicks",currentUser.uid));
     return d.exists() ? d.data() : null;
-  } catch(_){
+  } catch(e){
+    console.warn("getMyTournamentPicks:", e.message);
     return null;
   }
 }
 
 async function getAllTournamentPicks() {
-  const snap = await getDocs(collection(db,"tournamentPicks"));
-  const obj = {};
-  snap.forEach(d => { obj[d.id] = d.data(); });
-  return obj;
+  try {
+    const snap = await getDocs(collection(db,"tournamentPicks"));
+    const obj = {};
+    snap.forEach(d => { obj[d.id] = d.data(); });
+    return obj;
+  } catch(e){
+    console.warn("getAllTournamentPicks:", e.message);
+    return {};
+  }
 }
 
 async function saveMyTournamentPicks(picks) {
@@ -1675,10 +1681,23 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
 
 // ── LEADERBOARD ───────────────────────────────────────────────
 async function calculateLeaderboard() {
-  const [matches, results, predSnap, tPicks, tResult] = await Promise.all([
-    getMatches(), getResults(), getDocs(collection(db,"predictions")),
-    getAllTournamentPicks(), getTournamentResult()
-  ]);
+  // Match data is essential. Tournament data is optional — if Firestore
+  // rules block the new collections, leaderboard still renders without
+  // bonus points instead of failing entirely.
+  let matches, results, predSnap;
+  try {
+    [matches, results, predSnap] = await Promise.all([
+      getMatches(), getResults(), getDocs(collection(db,"predictions"))
+    ]);
+  } catch(e) {
+    console.error("Leaderboard core data load failed:", e);
+    return;
+  }
+
+  let tPicks = {}, tResult = { champion: "", topScorer: "" };
+  try { tPicks = await getAllTournamentPicks(); } catch(e) { console.warn("Tournament picks not readable:", e.message); }
+  try { tResult = await getTournamentResult(); }   catch(e) { console.warn("Tournament result not readable:", e.message); }
+
   const board = [];
 
   // Track everyone who has either match predictions OR tournament picks
@@ -2440,12 +2459,13 @@ async function renderTournamentView(uid) {
 
 // Main entry point for the tournament tab
 async function renderTournamentTab() {
-  // Load striker list + my picks + lock state in parallel
-  const [strikers, mine, locked] = await Promise.all([
-    getStrikerList(),
-    getMyTournamentPicks(),
-    tournamentPicksLocked()
-  ]);
+  // Load striker list + my picks + lock state defensively
+  let strikers = parseStrikerList(DEFAULT_STRIKERS);
+  let mine = null;
+  let locked = false;
+  try { strikers = await getStrikerList(); }      catch(e){ console.warn("strikers:", e.message); }
+  try { mine    = await getMyTournamentPicks(); } catch(e){ console.warn("mine:", e.message); }
+  try { locked  = await tournamentPicksLocked(); } catch(e){ console.warn("locked:", e.message); }
 
   currentStrikerList = strikers;
 
@@ -2460,7 +2480,7 @@ async function renderTournamentTab() {
   }
 
   // Populate filter dropdown (other players are added there too)
-  await populatePlayerFilter();
+  try { await populatePlayerFilter(); } catch(e){ console.warn("populatePlayerFilter:", e.message); }
 
   // Lock banner
   document.getElementById("tournamentLockBanner").classList.toggle("hidden", !locked);
@@ -2487,10 +2507,10 @@ async function renderTournamentTab() {
       viewEl.classList.add("hidden");
       emptyEl.classList.add("hidden");
       editEl.classList.remove("hidden");
-      await populateChampionDropdowns();
+      try { await populateChampionDropdowns(); }
+      catch(e){ console.error("populateChampionDropdowns failed:", e); }
       renderSelectedScorer();
 
-      // Disable save status update
       document.getElementById("tournamentSaveStatus").textContent =
         mine ? `Last saved ${new Date(mine.updatedAt || Date.now()).toLocaleString()}` : "Pick locked in only after you save.";
     }
@@ -2635,8 +2655,21 @@ setInterval(() => {
 onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); refreshTournamentIfActive(); });
 onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); });
 onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); });
-onSnapshot(collection(db,"tournamentPicks"), () => { calculateLeaderboard(); refreshTournamentIfActive(); });
-onSnapshot(collection(db,"settings"),    () => { calculateLeaderboard(); refreshTournamentIfActive(); });
+
+// Tournament listeners — guarded so a permission denial doesn't break the page
+try {
+  onSnapshot(collection(db,"tournamentPicks"),
+    () => { calculateLeaderboard(); refreshTournamentIfActive(); },
+    err => console.warn("tournamentPicks snapshot:", err.message)
+  );
+} catch(e) { console.warn("tournamentPicks listener not attached:", e.message); }
+
+try {
+  onSnapshot(collection(db,"settings"),
+    () => { calculateLeaderboard(); refreshTournamentIfActive(); },
+    err => console.warn("settings snapshot:", err.message)
+  );
+} catch(e) { console.warn("settings listener not attached:", e.message); }
 
 function renderAllPicksIfActive() {
   const active = document.querySelector(".tab-content:not(.hidden)");
