@@ -962,6 +962,15 @@ import {
 // ↓ Replace with your Cloudflare Worker URL (proxies Anthropic API calls)
 const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev";
 
+// ── ODDS API (optional) ───────────────────────────────────────
+// Get a free API key from https://the-odds-api.com (500 requests/month free).
+// Returns real bookmaker odds (Bet365, Pinnacle, Bet365, William Hill, etc.)
+// converted to win/draw/loss probabilities. If the key is empty or the API
+// is rate-limited, the app falls back to AI-estimated probabilities.
+const ODDS_API_KEY = "b866ae5fc17fc4ac795b2449759022d5"; // ← paste your key here, e.g. "abc123def456..."
+const ODDS_API_REGION = "uk"; // bookmakers region: "uk" / "eu" / "us" / "au"
+                              // "uk" and "eu" include Bet365; "us" doesn't.
+
 const firebaseConfig = {
   apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
   authDomain: "wc-prediction-nk.firebaseapp.com",
@@ -1778,10 +1787,12 @@ async function calculateLeaderboard() {
 }
 
 // ── WIN/DRAW/LOSS PROBABILITY BARS ────────────────────────────
-// Powered by Claude via the same Cloudflare Worker proxy used for AI previews.
-// This avoids API-Football's paid-tier requirements and fixture-name matching
-// issues — works for every fixture immediately and costs nothing extra.
+// Strategy: try The Odds API (real bookmaker odds incl. Bet365) first.
+// Fall back to a Claude-based estimate if no key configured, rate-limited,
+// or the fixture isn't yet listed by bookmakers.
 const probCache = {};
+let oddsApiCache = null;       // { fetchedAt, events:[…] } — one fetch covers all matches
+let oddsApiDisabled = false;   // set true after a non-recoverable error to stop hammering
 
 function renderProbBar(matchId, home, away, data) {
   const el = document.getElementById(`prob-bar-${matchId}`);
@@ -1790,6 +1801,9 @@ function renderProbBar(matchId, home, away, data) {
   const hw = Math.round(data.home);
   const dr = Math.round(data.draw);
   const aw = Math.round(data.away);
+  const sourceLabel = data.source === "odds"
+    ? `Real bookmaker odds · ${data.book || "consensus"}`
+    : "AI estimated probability · for entertainment only";
 
   el.innerHTML = `
     <div class="prob-labels mb-1">
@@ -1802,9 +1816,152 @@ function renderProbBar(matchId, home, away, data) {
       <div class="prob-seg-draw" style="width:${dr}%"></div>
       <div class="prob-seg-away" style="width:${aw}%"></div>
     </div>
-    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">AI estimated probability · for entertainment only</div>`;
+    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">${sourceLabel}</div>`;
 }
 
+// --- The Odds API integration ---------------------------------
+// One call returns every upcoming World Cup match with odds from many books.
+// We cache the entire response for 10 minutes so a page render costs at most
+// one credit, no matter how many matches are showing.
+async function fetchOddsApiEvents() {
+  if (oddsApiDisabled || !ODDS_API_KEY) return null;
+  const TEN_MIN = 10 * 60 * 1000;
+  if (oddsApiCache && (Date.now() - oddsApiCache.fetchedAt) < TEN_MIN) {
+    return oddsApiCache.events;
+  }
+
+  const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds`
+            + `?apiKey=${encodeURIComponent(ODDS_API_KEY)}`
+            + `&regions=${encodeURIComponent(ODDS_API_REGION)}`
+            + `&markets=h2h&oddsFormat=decimal`;
+
+  try {
+    const res = await fetch(url);
+    if (res.status === 401 || res.status === 403) {
+      console.warn("[Odds API] Invalid API key — disabling for this session.");
+      oddsApiDisabled = true;
+      return null;
+    }
+    if (res.status === 429) {
+      console.warn("[Odds API] Rate limited / out of credits — falling back to AI estimate.");
+      oddsApiDisabled = true;
+      return null;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const events = await res.json();
+    if (!Array.isArray(events)) throw new Error("Unexpected response shape");
+    oddsApiCache = { fetchedAt: Date.now(), events };
+    console.log(`[Odds API] Loaded ${events.length} events · credits used: ${res.headers.get("x-requests-used") || "?"} / remaining: ${res.headers.get("x-requests-remaining") || "?"}`);
+    return events;
+  } catch(err) {
+    console.warn("[Odds API] Fetch failed, falling back to AI estimate:", err.message);
+    return null;
+  }
+}
+
+// Find the event for a given home/away team and convert its odds to probabilities.
+// Bookmaker odds include an overround (margin) — normalising the three implied
+// probabilities to sum to 100% removes it, giving the "fair" probability.
+function pickProbabilitiesFromOddsEvent(event, home, away) {
+  if (!event?.bookmakers?.length) return null;
+
+  // Try Bet365 first if present, otherwise use the consensus average of all books
+  const bet365 = event.bookmakers.find(b => b.key === "bet365" || /bet365/i.test(b.title));
+  const books = bet365 ? [bet365] : event.bookmakers;
+
+  // Average the three implied probabilities across the chosen books
+  let sumH = 0, sumD = 0, sumA = 0, count = 0;
+  let bookLabel = bet365 ? bet365.title : `${books.length} books avg.`;
+
+  for (const book of books) {
+    const market = book.markets?.find(m => m.key === "h2h");
+    if (!market?.outcomes?.length) continue;
+
+    const oH = market.outcomes.find(o => o.name === event.home_team)?.price;
+    const oA = market.outcomes.find(o => o.name === event.away_team)?.price;
+    const oD = market.outcomes.find(o => /^draw$/i.test(o.name))?.price;
+    if (!oH || !oA || !oD) continue;
+
+    const total = (1/oH) + (1/oA) + (1/oD);   // overround-adjusted
+    sumH += (1/oH) / total;
+    sumD += (1/oD) / total;
+    sumA += (1/oA) / total;
+    count++;
+  }
+
+  if (!count) return null;
+
+  return {
+    home: (sumH / count) * 100,
+    draw: (sumD / count) * 100,
+    away: (sumA / count) * 100,
+    source: "odds",
+    book: bookLabel
+  };
+}
+
+// Fuzzy team-name match: API may use "United States" while admin entered "USA"
+function normaliseTeamName(s) {
+  return (s || "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "")
+    .replace(/^the/, "")
+    .trim();
+}
+
+function findOddsEventForMatch(events, home, away) {
+  const hN = normaliseTeamName(home);
+  const aN = normaliseTeamName(away);
+
+  return events.find(ev => {
+    const evH = normaliseTeamName(ev.home_team);
+    const evA = normaliseTeamName(ev.away_team);
+    const matchPair = (x, y) => x.includes(y) || y.includes(x);
+    // Try both orderings — admin might've swapped home/away vs the bookmaker
+    return (matchPair(evH, hN) && matchPair(evA, aN)) ||
+           (matchPair(evH, aN) && matchPair(evA, hN));
+  });
+}
+
+// --- Claude fallback ------------------------------------------
+async function fetchClaudeEstimate(home, away) {
+  const prompt = `You are a football statistician. Estimate the win/draw/loss probability for this FIFA World Cup 2026 match based on each team's current form, FIFA ranking, head-to-head history, and squad strength.
+
+Match: ${home} vs ${away}
+
+Respond with ONLY a single line of JSON, nothing else. No code fences, no explanation. Format:
+{"home":NN,"draw":NN,"away":NN}
+
+The three numbers must be integers and sum to exactly 100. Example for an even match: {"home":40,"draw":28,"away":32}`;
+
+  const response = await fetch(ANTHROPIC_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5",
+      max_tokens: 60,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  const text = data.content?.find(b => b.type === "text")?.text || "";
+
+  const jsonMatch = text.match(/\{[^{}]*"home"[^{}]*\}/);
+  if (!jsonMatch) throw new Error("No JSON in response");
+  const parsed = JSON.parse(jsonMatch[0]);
+  const hp = Number(parsed.home), dp = Number(parsed.draw), ap = Number(parsed.away);
+  if (![hp,dp,ap].every(n => Number.isFinite(n) && n >= 0)) throw new Error("Invalid numbers");
+  const total = hp + dp + ap || 100;
+  return {
+    home: (hp/total)*100,
+    draw: (dp/total)*100,
+    away: (ap/total)*100,
+    source: "ai"
+  };
+}
+
+// --- Main entry point -----------------------------------------
 async function loadProbBar(matchId, home, away) {
   const el = document.getElementById(`prob-bar-${matchId}`);
   if (!el) return;
@@ -1814,57 +1971,33 @@ async function loadProbBar(matchId, home, away) {
     return;
   }
 
-  el.innerHTML = `<div class="prob-loading">Calculating win probabilities…</div>`;
+  el.innerHTML = `<div class="prob-loading">Loading match probabilities…</div>`;
 
+  // Try real bookmaker odds first
   try {
-    const prompt = `You are a football statistician. Estimate the win/draw/loss probability for this FIFA World Cup 2026 match based on each team's current form, FIFA ranking, head-to-head history, and squad strength.
-
-Match: ${home} vs ${away}
-
-Respond with ONLY a single line of JSON, nothing else. No code fences, no explanation. Format:
-{"home":NN,"draw":NN,"away":NN}
-
-The three numbers must be integers and sum to exactly 100. Example for an even match: {"home":40,"draw":28,"away":32}`;
-
-    const response = await fetch(ANTHROPIC_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-5",
-        max_tokens: 60,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errBody.slice(0,120)}`);
+    const events = await fetchOddsApiEvents();
+    if (events) {
+      const ev = findOddsEventForMatch(events, home, away);
+      if (ev) {
+        const probs = pickProbabilitiesFromOddsEvent(ev, home, away);
+        if (probs) {
+          probCache[matchId] = probs;
+          renderProbBar(matchId, home, away, probs);
+          return;
+        }
+      }
     }
-
-    const data = await response.json();
-    const text = data.content?.find(b => b.type === "text")?.text || "";
-
-    // Extract the first JSON object from the response (defensive against extra prose)
-    const jsonMatch = text.match(/\{[^{}]*"home"[^{}]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in response: " + text.slice(0,80));
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const hp = Number(parsed.home);
-    const dp = Number(parsed.draw);
-    const ap = Number(parsed.away);
-
-    if (![hp,dp,ap].every(n => Number.isFinite(n) && n >= 0)) {
-      throw new Error("Invalid numbers: " + jsonMatch[0]);
-    }
-
-    const total = hp + dp + ap || 100;
-    const norm = { home:(hp/total)*100, draw:(dp/total)*100, away:(ap/total)*100 };
-
-    probCache[matchId] = norm;
-    renderProbBar(matchId, home, away, norm);
-
   } catch(err) {
-    el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Could not calculate probabilities.</div>`;
+    console.warn("[ProbBar] Odds API path failed:", err.message);
+  }
+
+  // Fallback: AI estimate
+  try {
+    const probs = await fetchClaudeEstimate(home, away);
+    probCache[matchId] = probs;
+    renderProbBar(matchId, home, away, probs);
+  } catch(err) {
+    el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Could not load match probabilities.</div>`;
     console.warn(`[ProbBar] ${home} vs ${away}:`, err.message);
   }
 }
