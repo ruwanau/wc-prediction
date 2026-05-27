@@ -959,9 +959,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // ── CONFIG ────────────────────────────────────────────────────
-// ↓ Replace with your Cloudflare Worker URL
+// ↓ Replace with your Cloudflare Worker URL (proxies Anthropic API calls)
 const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev";
-// API-Football key is stored in the Worker as a secret (API_FOOTBALL_KEY)
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfrWznaOhZzgkeYfnve7kCQIP1q5qcj7s",
@@ -1779,19 +1778,10 @@ async function calculateLeaderboard() {
 }
 
 // ── WIN/DRAW/LOSS PROBABILITY BARS ────────────────────────────
+// Powered by Claude via the same Cloudflare Worker proxy used for AI previews.
+// This avoids API-Football's paid-tier requirements and fixture-name matching
+// issues — works for every fixture immediately and costs nothing extra.
 const probCache = {};
-
-// API-Football is proxied through the same Cloudflare Worker to avoid CORS
-// The worker forwards requests to v3.football.api-sports.io when the
-// "x-target" header is "apifootball"
-async function apifootball(path) {
-  const res = await fetch(ANTHROPIC_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ _apifootball: path })
-  });
-  return res.json();
-}
 
 function renderProbBar(matchId, home, away, data) {
   const el = document.getElementById(`prob-bar-${matchId}`);
@@ -1803,16 +1793,16 @@ function renderProbBar(matchId, home, away, data) {
 
   el.innerHTML = `
     <div class="prob-labels mb-1">
-      <span><span class="prob-dot" style="background:#22c55e"></span>${home} <span class="prob-pct home">${hw}%</span></span>
+      <span><span class="prob-dot" style="background:#22c55e"></span>${escapeHtml(home)} <span class="prob-pct home">${hw}%</span></span>
       <span><span class="prob-dot" style="background:#94a3b8"></span>Draw <span class="prob-pct draw">${dr}%</span></span>
-      <span><span class="prob-dot" style="background:#f59e0b"></span>${away} <span class="prob-pct away">${aw}%</span></span>
+      <span><span class="prob-dot" style="background:#f59e0b"></span>${escapeHtml(away)} <span class="prob-pct away">${aw}%</span></span>
     </div>
     <div class="prob-bar-track">
       <div class="prob-seg-home" style="width:${hw}%"></div>
       <div class="prob-seg-draw" style="width:${dr}%"></div>
       <div class="prob-seg-away" style="width:${aw}%"></div>
     </div>
-    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">Statistical probability · API-Football</div>`;
+    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">AI estimated probability · for entertainment only</div>`;
 }
 
 async function loadProbBar(matchId, home, away) {
@@ -1824,53 +1814,58 @@ async function loadProbBar(matchId, home, away) {
     return;
   }
 
-  el.innerHTML = `<div class="prob-loading">Fetching match probabilities…</div>`;
+  el.innerHTML = `<div class="prob-loading">Calculating win probabilities…</div>`;
 
   try {
-    // Step 1: search for the fixture in World Cup 2026 (league=1)
-    // Try home team name first, then away team if no match found
-    let fixtureId = null;
+    const prompt = `You are a football statistician. Estimate the win/draw/loss probability for this FIFA World Cup 2026 match based on each team's current form, FIFA ranking, head-to-head history, and squad strength.
 
-    for (const searchTeam of [home, away]) {
-      const data = await apifootball(`/fixtures?league=1&season=2026&search=${encodeURIComponent(searchTeam)}`);
-      const fixtures = data?.response || [];
-      const found = fixtures.find(f => {
-        const h = (f.teams?.home?.name || "").toLowerCase();
-        const a = (f.teams?.away?.name || "").toLowerCase();
-        const hn = home.toLowerCase().replace(/\s+/g,"");
-        const an = away.toLowerCase().replace(/\s+/g,"");
-        return (h.replace(/\s+/g,"").includes(hn) || hn.includes(h.replace(/\s+/g,""))) &&
-               (a.replace(/\s+/g,"").includes(an) || an.includes(a.replace(/\s+/g,"")));
-      });
-      if (found) { fixtureId = found.fixture.id; break; }
+Match: ${home} vs ${away}
+
+Respond with ONLY a single line of JSON, nothing else. No code fences, no explanation. Format:
+{"home":NN,"draw":NN,"away":NN}
+
+The three numbers must be integers and sum to exactly 100. Example for an even match: {"home":40,"draw":28,"away":32}`;
+
+    const response = await fetch(ANTHROPIC_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 60,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errBody.slice(0,120)}`);
     }
 
-    if (!fixtureId) {
-      el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">No probability data found for this fixture yet.</div>`;
-      return;
+    const data = await response.json();
+    const text = data.content?.find(b => b.type === "text")?.text || "";
+
+    // Extract the first JSON object from the response (defensive against extra prose)
+    const jsonMatch = text.match(/\{[^{}]*"home"[^{}]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in response: " + text.slice(0,80));
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const hp = Number(parsed.home);
+    const dp = Number(parsed.draw);
+    const ap = Number(parsed.away);
+
+    if (![hp,dp,ap].every(n => Number.isFinite(n) && n >= 0)) {
+      throw new Error("Invalid numbers: " + jsonMatch[0]);
     }
 
-    // Step 2: get predictions for that fixture
-    const pred = await apifootball(`/predictions?fixture=${fixtureId}`);
-    const pct  = pred?.response?.[0]?.predictions?.percent;
-
-    if (!pct) {
-      el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Prediction data not available yet.</div>`;
-      return;
-    }
-
-    const hp = parseFloat(pct.home) || 0;
-    const dp = parseFloat(pct.draw) || 0;
-    const ap = parseFloat(pct.away) || 0;
     const total = hp + dp + ap || 100;
-    const norm  = { home:(hp/total)*100, draw:(dp/total)*100, away:(ap/total)*100 };
+    const norm = { home:(hp/total)*100, draw:(dp/total)*100, away:(ap/total)*100 };
 
     probCache[matchId] = norm;
     renderProbBar(matchId, home, away, norm);
 
   } catch(err) {
-    el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Could not load probability data.</div>`;
-    console.warn("Prob bar:", err.message);
+    el.innerHTML = `<div class="text-slate-600 text-xs text-center py-1">Could not calculate probabilities.</div>`;
+    console.warn(`[ProbBar] ${home} vs ${away}:`, err.message);
   }
 }
 
