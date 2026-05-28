@@ -529,6 +529,7 @@
           <span class="nav-group-label">Info</span>
           <div class="nav-group-btns">
             <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="reportsTab">📈 Reports</button>
             <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
           </div>
         </div>
@@ -789,6 +790,92 @@
         <div id="noLeaderboardMsg" class="hidden text-center text-slate-500 py-10">No predictions yet.</div>
       </div>
     </div>
+  </section>
+
+  <!-- REPORTS TAB -->
+  <section id="reportsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Reports</h2>
+      <p class="text-slate-400 text-sm">Filter and explore every prediction across the whole game</p>
+    </div>
+
+    <!-- Summary stat cards -->
+    <div id="reportSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+    <!-- Filters -->
+    <div class="glass rounded-2xl p-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div>
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Player</label>
+          <select id="repPlayer" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="">All players</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Stage</label>
+          <select id="repStage" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="">All stages</option>
+            <option value="Group">Group</option>
+            <option value="Knockout">Knockout</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Match status</label>
+          <select id="repStatus" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="">All matches</option>
+            <option value="completed">Completed only</option>
+            <option value="pending">Not played yet</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Outcome</label>
+          <select id="repOutcome" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="">All picks</option>
+            <option value="exact">🎯 Exact score</option>
+            <option value="correct">✅ Correct result</option>
+            <option value="wrong">❌ Wrong</option>
+            <option value="nopick">— No pick</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Search team</label>
+          <input id="repSearch" type="text" placeholder="e.g. Brazil"
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-3 mt-4 flex-wrap">
+        <div class="text-xs text-slate-500"><span id="repRowCount">0</span> rows shown</div>
+        <div class="flex gap-2">
+          <button id="repReset" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-xs transition">Reset filters</button>
+          <button id="repExport" class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-4 py-2 rounded-lg text-xs transition">⬇ Export CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data table -->
+    <div class="glass rounded-2xl p-4 overflow-x-auto">
+      <table class="w-full text-left text-sm min-w-[760px]">
+        <thead>
+          <tr class="border-b border-slate-700 text-slate-400">
+            <th class="py-2.5 px-3">Player</th>
+            <th class="py-2.5 px-3">Match</th>
+            <th class="py-2.5 px-3">Stage</th>
+            <th class="py-2.5 px-3">Kickoff</th>
+            <th class="py-2.5 px-3">Pick</th>
+            <th class="py-2.5 px-3">Result</th>
+            <th class="py-2.5 px-3">Outcome</th>
+            <th class="py-2.5 px-3 text-right">Pts</th>
+          </tr>
+        </thead>
+        <tbody id="reportBody"></tbody>
+      </table>
+      <div id="reportEmpty" class="hidden text-center text-slate-500 py-12">
+        <div class="text-4xl mb-2">🔍</div>
+        <div>No rows match your filters.</div>
+      </div>
+    </div>
+
   </section>
 
   <!-- RULES TAB -->
@@ -1242,7 +1329,12 @@ onAuthStateChanged(auth, async user => {
 
     // Update header UI
     const initials = name.slice(0,2).toUpperCase();
-    ["hdrAvatar","predAvatar"].forEach(id => document.getElementById(id).textContent = initials);
+    await refreshUserFlags();
+    const myFlag = userFlagCache[user.uid];
+    ["hdrAvatar","predAvatar"].forEach(id => {
+      const el = document.getElementById(id);
+      el.innerHTML = myFlag ? `<span style="font-size:1.2em;line-height:1">${myFlag}</span>` : initials;
+    });
     document.getElementById("hdrName").textContent  = name;
     document.getElementById("predName").textContent = name;
     document.getElementById("hdrEmail").textContent = user.email;
@@ -1596,6 +1688,74 @@ async function getAllNations() {
   return Array.from(set).sort((a,b) => a.localeCompare(b));
 }
 
+// ── NATION → FLAG EMOJI ───────────────────────────────────────
+// Maps a nation name to its ISO-3166 alpha-2 code, then to a flag emoji
+// (regional-indicator pair). Covers all likely WC nations + common aliases.
+const NATION_ISO = {
+  "argentina":"ar","australia":"au","austria":"at","belgium":"be","brazil":"br",
+  "canada":"ca","cape verde":"cv","colombia":"co","croatia":"hr","curacao":"cw",
+  "curaçao":"cw","dr congo":"cd","democratic republic of congo":"cd","ecuador":"ec",
+  "egypt":"eg","england":"gb-eng","france":"fr","germany":"de","ghana":"gh",
+  "haiti":"ht","iran":"ir","italy":"it","ivory coast":"ci","cote d'ivoire":"ci",
+  "jamaica":"jm","japan":"jp","jordan":"jo","mexico":"mx","morocco":"ma",
+  "netherlands":"nl","new zealand":"nz","nigeria":"ng","norway":"no","panama":"pa",
+  "paraguay":"py","peru":"pe","poland":"pl","portugal":"pt","qatar":"qa",
+  "saudi arabia":"sa","scotland":"gb-sct","senegal":"sn","serbia":"rs",
+  "south africa":"za","south korea":"kr","korea republic":"kr","spain":"es",
+  "sweden":"se","switzerland":"ch","tunisia":"tn","united states":"us","usa":"us",
+  "united states of america":"us","uruguay":"uy","uzbekistan":"uz","wales":"gb-wls",
+  "georgia":"ge","guinea":"gn","denmark":"dk","turkey":"tr","türkiye":"tr",
+  "ukraine":"ua","greece":"gr","czechia":"cz","czech republic":"cz","romania":"ro",
+  "hungary":"hu","algeria":"dz","cameroon":"cm","mali":"ml","costa rica":"cr",
+  "chile":"cl","bolivia":"bo","venezuela":"ve","honduras":"hn"
+};
+
+// England/Scotland/Wales use subdivision flag emoji (tag sequences)
+const SUBDIVISION_FLAGS = {
+  "gb-eng":"🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+  "gb-sct":"🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
+  "gb-wls":"🏴\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}"
+};
+
+function nationToFlag(nation) {
+  if (!nation) return "";
+  const iso = NATION_ISO[nation.trim().toLowerCase()];
+  if (!iso) return "";
+  if (SUBDIVISION_FLAGS[iso]) return SUBDIVISION_FLAGS[iso];
+  // Standard 2-letter country → regional indicator symbols
+  if (iso.length !== 2) return "";
+  const base = 0x1F1E6;
+  return String.fromCodePoint(
+    base + (iso.charCodeAt(0) - 97),
+    base + (iso.charCodeAt(1) - 97)
+  );
+}
+
+// Cache of uid → flag emoji, derived from each user's champion 1st choice
+let userFlagCache = {};
+
+async function refreshUserFlags() {
+  try {
+    const picks = await getAllTournamentPicks();
+    const map = {};
+    Object.entries(picks).forEach(([uid, d]) => {
+      const flag = nationToFlag(d.champion1 || "");
+      if (flag) map[uid] = flag;
+    });
+    userFlagCache = map;
+  } catch(e) {
+    console.warn("refreshUserFlags:", e.message);
+  }
+}
+
+// Returns the avatar inner content for a user: their flag if they have one,
+// otherwise their initials. `initials` is the fallback string.
+function avatarContent(uid, initials) {
+  const flag = uid && userFlagCache[uid];
+  return flag ? `<span style="font-size:1.15em;line-height:1">${flag}</span>` : initials;
+}
+
+
 // ── LOAD USER PREDICTIONS INTO INPUTS ─────────────────────────
 async function loadMyPredictions() {
   if (!currentUser) return;
@@ -1909,6 +2069,7 @@ async function calculateLeaderboard() {
 
     const pts = matchPts + bonusPts;
     board.push({
+      uid,
       user: userName,
       exact, outcome,
       matchPts, bonusPts, pts,
@@ -1917,6 +2078,8 @@ async function calculateLeaderboard() {
   });
 
   board.sort((a,b) => b.pts - a.pts);
+
+  await refreshUserFlags();
 
   const tbody = document.getElementById("leaderboardBody");
   const noMsg = document.getElementById("noLeaderboardMsg");
@@ -1935,7 +2098,7 @@ async function calculateLeaderboard() {
     row.innerHTML = `
       <td class="py-4 px-3 font-bold display-font text-lg ${rc}">${re}</td>
       <td class="py-4 px-3 font-medium">
-        ${escapeHtml(e.user)}
+        ${(userFlagCache[e.uid] ? userFlagCache[e.uid] + " " : "")}${escapeHtml(e.user)}
         ${e.isMe?'<span class="ml-2 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full">You</span>':""}
       </td>
       <td class="py-4 px-3 text-slate-300">${e.exact}</td>
@@ -2324,6 +2487,7 @@ async function renderAllPicks() {
   const [matches, results, predSnap] = await Promise.all([
     getMatches(), getResults(), getDocs(collection(db,"predictions"))
   ]);
+  await refreshUserFlags();
 
   const container = document.getElementById("allPicksContainer");
   const emptyMsg  = document.getElementById("allPicksEmpty");
@@ -2434,7 +2598,7 @@ async function renderAllPicks() {
       row.className = `flex items-center justify-between gap-3 px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
       row.innerHTML = `
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="user-avatar flex-shrink-0" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${p.name.slice(0,2).toUpperCase()}</div>
+          <div class="user-avatar flex-shrink-0" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${avatarContent(p.uid, p.name.slice(0,2).toUpperCase())}</div>
           <span class="text-sm font-medium truncate">${p.name}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
@@ -2454,8 +2618,207 @@ async function renderAllPicks() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// TOURNAMENT TAB — UI handlers
+// REPORTS TAB — comprehensive filterable dataset
 // ══════════════════════════════════════════════════════════════
+let reportDataset = [];   // flat array of rows, rebuilt each time the tab opens
+
+// Build one row per (player, match) combination with computed points/outcome
+async function buildReportDataset() {
+  const [matches, results, predSnap] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  ]);
+  await refreshUserFlags();
+
+  const players = [];
+  predSnap.forEach(ds => {
+    const d = ds.data();
+    players.push({ uid: ds.id, name: d.user || "Unknown", preds: d.predictions || {} });
+  });
+
+  const rows = [];
+  players.forEach(p => {
+    matches.forEach(m => {
+      const pred = p.preds[m.id];
+      const act  = results[m.id];
+      const hasPred   = pred && pred.home != null && pred.away != null;
+      const hasResult = act?.home !== undefined;
+      const mul = m.stage === "Knockout" ? 1.5 : 1;
+
+      let outcome = "nopick";  // nopick | pending | exact | correct | wrong
+      let pts = 0;
+      if (hasPred && hasResult) {
+        if (pred.home === act.home && pred.away === act.away) { outcome = "exact"; pts = 3*mul; }
+        else if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) { outcome = "correct"; pts = 1*mul; }
+        else { outcome = "wrong"; pts = 0; }
+      } else if (hasPred && !hasResult) {
+        outcome = "pending";
+      }
+
+      rows.push({
+        uid: p.uid,
+        player: p.name,
+        flag: userFlagCache[p.uid] || "",
+        home: m.home, away: m.away,
+        match: `${m.home} vs ${m.away}`,
+        stage: m.stage,
+        kickoffMs: m.kickoffUtcMs || 0,
+        kickoff: fmtLocal(m.kickoffUtcMs),
+        pick: hasPred ? `${pred.home}–${pred.away}` : "",
+        result: hasResult ? `${act.home}–${act.away}` : "",
+        completed: hasResult,
+        outcome,
+        pts
+      });
+    });
+  });
+  return rows;
+}
+
+function populateReportPlayerFilter() {
+  const sel = document.getElementById("repPlayer");
+  if (!sel) return;
+  const prev = sel.value;
+  const names = [...new Set(reportDataset.map(r => r.player))].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = `<option value="">All players</option>` +
+    names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  sel.value = prev;
+}
+
+function getReportFilters() {
+  return {
+    player:  document.getElementById("repPlayer").value,
+    stage:   document.getElementById("repStage").value,
+    status:  document.getElementById("repStatus").value,
+    outcome: document.getElementById("repOutcome").value,
+    search:  document.getElementById("repSearch").value.trim().toLowerCase()
+  };
+}
+
+function applyReportFilters(rows, f) {
+  return rows.filter(r => {
+    if (f.player && r.player !== f.player) return false;
+    if (f.stage && r.stage !== f.stage) return false;
+    if (f.status === "completed" && !r.completed) return false;
+    if (f.status === "pending" && r.completed) return false;
+    if (f.outcome && r.outcome !== f.outcome) return false;
+    if (f.search && !(r.home.toLowerCase().includes(f.search) || r.away.toLowerCase().includes(f.search))) return false;
+    return true;
+  });
+}
+
+const OUTCOME_BADGE = {
+  exact:   `<span class="pick-exact rounded px-2 py-0.5 text-xs font-medium">🎯 Exact</span>`,
+  correct: `<span class="pick-correct rounded px-2 py-0.5 text-xs font-medium">✅ Correct</span>`,
+  wrong:   `<span class="pick-wrong rounded px-2 py-0.5 text-xs font-medium">❌ Wrong</span>`,
+  pending: `<span class="pick-pending rounded px-2 py-0.5 text-xs font-medium">⏳ Pending</span>`,
+  nopick:  `<span class="pick-none rounded px-2 py-0.5 text-xs font-medium">— None</span>`
+};
+
+function renderReport() {
+  const f = getReportFilters();
+  let rows = applyReportFilters(reportDataset, f);
+  // Sort: most recent kickoff first, then player
+  rows.sort((a,b) => (b.kickoffMs - a.kickoffMs) || a.player.localeCompare(b.player));
+
+  // Summary stats (over the filtered set)
+  const totalPts = rows.reduce((s,r)=>s+r.pts,0);
+  const exactCount = rows.filter(r=>r.outcome==="exact").length;
+  const correctCount = rows.filter(r=>r.outcome==="correct").length;
+  const playersShown = new Set(rows.map(r=>r.player)).size;
+
+  document.getElementById("reportSummary").innerHTML = `
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Rows</div>
+      <div class="display-font text-2xl text-yellow-400">${rows.length}</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Players</div>
+      <div class="display-font text-2xl text-yellow-400">${playersShown}</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">🎯 Exact / ✅ Correct</div>
+      <div class="display-font text-2xl text-yellow-400">${exactCount} / ${correctCount}</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Total points</div>
+      <div class="display-font text-2xl text-yellow-400">${totalPts%1===0?totalPts:totalPts.toFixed(1)}</div>
+    </div>`;
+
+  const body = document.getElementById("reportBody");
+  const empty = document.getElementById("reportEmpty");
+  document.getElementById("repRowCount").textContent = rows.length;
+
+  if (!rows.length) {
+    body.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  body.innerHTML = rows.map(r => `
+    <tr class="border-b border-slate-800 hover:bg-white/3 transition">
+      <td class="py-2.5 px-3 font-medium whitespace-nowrap">${r.flag ? r.flag + " " : ""}${escapeHtml(r.player)}</td>
+      <td class="py-2.5 px-3 whitespace-nowrap">${escapeHtml(r.match)}</td>
+      <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${r.stage==='Knockout'?'badge-knockout':'badge-group'}">${r.stage}</span></td>
+      <td class="py-2.5 px-3 text-slate-400 text-xs whitespace-nowrap">${escapeHtml(r.kickoff)}</td>
+      <td class="py-2.5 px-3 font-mono ${r.pick?'text-white':'text-slate-600'}">${r.pick || "—"}</td>
+      <td class="py-2.5 px-3 font-mono ${r.result?'text-yellow-400':'text-slate-600'}">${r.result || "—"}</td>
+      <td class="py-2.5 px-3">${OUTCOME_BADGE[r.outcome]}</td>
+      <td class="py-2.5 px-3 text-right font-bold ${r.pts>0?'text-green-400':'text-slate-600'}">${r.pts>0 ? (r.pts%1===0?r.pts:r.pts.toFixed(1)) : "0"}</td>
+    </tr>`).join("");
+}
+
+function exportReportCSV() {
+  const f = getReportFilters();
+  const rows = applyReportFilters(reportDataset, f)
+    .sort((a,b) => (b.kickoffMs - a.kickoffMs) || a.player.localeCompare(b.player));
+
+  const header = ["Player","Match","Stage","Kickoff","Pick","Result","Outcome","Points"];
+  const esc = v => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+  const lines = [header.join(",")];
+  rows.forEach(r => {
+    lines.push([
+      r.player, r.match, r.stage, r.kickoff,
+      r.pick || "", r.result || "", r.outcome,
+      r.pts
+    ].map(esc).join(","));
+  });
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `wc2026-report-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function renderReportsTab() {
+  reportDataset = await buildReportDataset();
+  populateReportPlayerFilter();
+  renderReport();
+}
+
+// Wire up report filter controls once
+function setupReportsTab() {
+  ["repPlayer","repStage","repStatus","repOutcome"].forEach(id =>
+    document.getElementById(id).addEventListener("change", renderReport)
+  );
+  document.getElementById("repSearch").addEventListener("input", renderReport);
+  document.getElementById("repReset").addEventListener("click", () => {
+    ["repPlayer","repStage","repStatus","repOutcome"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("repSearch").value = "";
+    renderReport();
+  });
+  document.getElementById("repExport").addEventListener("click", exportReportCSV);
+}
+setupReportsTab();
+
 
 // In-memory current selections (mirror Firestore once loaded)
 let myTournamentPicks = {
@@ -2850,6 +3213,16 @@ async function saveMyTournamentPicksFromUI() {
     });
     btn.textContent = "Saved ✓";
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+    await refreshUserFlags();
+    // Update header + predict avatars to reflect new flag
+    if (currentUser) {
+      const f = userFlagCache[currentUser.uid];
+      const init = (currentUser.displayName || currentUser.email).slice(0,2).toUpperCase();
+      ["hdrAvatar","predAvatar"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = f ? `<span style="font-size:1.2em;line-height:1">${f}</span>` : init;
+      });
+    }
     calculateLeaderboard();
     document.getElementById("tournamentSaveStatus").textContent = `Last saved ${new Date().toLocaleString()}`;
   } catch(e) {
@@ -2941,6 +3314,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.dataset.tab==="tournamentTab")  renderTournamentTab();
     if (btn.dataset.tab==="resultsTab")     renderResultsTab();
     if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
+    if (btn.dataset.tab==="reportsTab")     renderReportsTab();
     if (btn.dataset.tab==="adminTab")       { if(adminUnlocked) { renderMatches(); setupAdminTournamentControls(); } }
   });
 });
@@ -2952,14 +3326,14 @@ setInterval(() => {
 }, 60000);
 
 // ── REALTIME ──────────────────────────────────────────────────
-onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); refreshTournamentIfActive(); });
-onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); });
-onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); });
+onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); refreshTournamentIfActive(); refreshReportsIfActive(); });
+onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); refreshReportsIfActive(); });
+onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); refreshReportsIfActive(); });
 
 // Tournament listeners — guarded so a permission denial doesn't break the page
 try {
   onSnapshot(collection(db,"tournamentPicks"),
-    () => { calculateLeaderboard(); refreshTournamentIfActive(); },
+    () => { calculateLeaderboard(); refreshTournamentIfActive(); refreshReportsIfActive(); },
     err => console.warn("tournamentPicks snapshot:", err.message)
   );
 } catch(e) { console.warn("tournamentPicks listener not attached:", e.message); }
@@ -2979,6 +3353,11 @@ function renderAllPicksIfActive() {
 function refreshTournamentIfActive() {
   const active = document.querySelector(".tab-content:not(.hidden)");
   if (active?.id === "tournamentTab") renderTournamentTab();
+}
+
+function refreshReportsIfActive() {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "reportsTab") renderReportsTab();
 }
 
 // ── CONFIRM MODAL ─────────────────────────────────────────────
