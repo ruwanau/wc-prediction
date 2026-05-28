@@ -245,6 +245,35 @@
     .tab-btn { transition: all 0.15s ease; font-weight: 500; }
     .tab-btn:not(.tab-active):hover { background: rgba(255,255,255,0.08); }
 
+    /* ── Grouped nav ── */
+    .nav-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-group-label {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #475569;
+      padding-left: 4px;
+      line-height: 1;
+    }
+    .nav-group-btns {
+      display: flex;
+      gap: 4px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 0.75rem;
+      padding: 4px;
+    }
+    .nav-group-btns .tab-btn { white-space: nowrap; }
+    @media (max-width: 640px) {
+      .nav-group { flex: 1 1 auto; }
+      .nav-group-btns { flex-wrap: wrap; }
+    }
+
     /* ── All Picks tab ── */
     .pick-exact   { background: rgba(34,197,94,0.15);  border: 1px solid rgba(34,197,94,0.4);  color: #4ade80; }
     .pick-correct { background: rgba(234,179,8,0.12);  border: 1px solid rgba(234,179,8,0.35); color: #fde68a; }
@@ -474,16 +503,43 @@
     </div>
 
     <div class="flex items-center gap-3 flex-wrap justify-end">
-      <nav class="flex gap-2 flex-wrap">
-        <button class="tab-btn tab-active px-4 py-2 rounded-xl text-sm" data-tab="predictTab">⚽ Predict</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="predictionsTab">👀 Game Picks</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Tournament Picks</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
-        <button class="tab-btn px-4 py-2 rounded-xl bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
-        <button id="adminTabBtn" class="tab-btn px-4 py-2 rounded-xl bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
+      <nav class="flex gap-3 flex-wrap items-center">
+        <!-- Group: Play -->
+        <div class="nav-group">
+          <span class="nav-group-label">Play</span>
+          <div class="nav-group-btns">
+            <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm" data-tab="predictTab">⚽ Predict</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="predictionsTab">👀 Game Picks</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Tournament Picks</button>
+          </div>
+        </div>
+
+        <!-- Group: Live -->
+        <div class="nav-group">
+          <span class="nav-group-label">Live</span>
+          <div class="nav-group-btns">
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
+          </div>
+        </div>
+
+        <!-- Group: Info -->
+        <div class="nav-group">
+          <span class="nav-group-label">Info</span>
+          <div class="nav-group-btns">
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
+          </div>
+        </div>
+
+        <!-- Group: Admin -->
+        <div class="nav-group">
+          <span class="nav-group-label">&nbsp;</span>
+          <div class="nav-group-btns">
+            <button id="adminTabBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
+          </div>
+        </div>
       </nav>
 
       <!-- User chip -->
@@ -1071,7 +1127,7 @@ const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev"
 // Returns real bookmaker odds (Bet365, Pinnacle, Bet365, William Hill, etc.)
 // converted to win/draw/loss probabilities. If the key is empty or the API
 // is rate-limited, the app falls back to AI-estimated probabilities.
-const ODDS_API_KEY = "b866ae5fc17fc4ac795b2449759022d5"; // ← paste your key here, e.g. "abc123def456..."
+const ODDS_API_KEY = ""; // ← paste your key here, e.g. "abc123def456..."
 const ODDS_API_REGION = "uk"; // bookmakers region: "uk" / "eu" / "us" / "au"
                               // "uk" and "eu" include Bet365; "us" doesn't.
 
@@ -1920,7 +1976,6 @@ function renderProbBar(matchId, home, away, data) {
   }
 
   el.innerHTML = `
-    <div class="flex justify-end mb-1.5">${badge}</div>
     <div class="prob-labels mb-1">
       <span><span class="prob-dot" style="background:#22c55e"></span>${escapeHtml(home)} <span class="prob-pct home">${hw}%</span></span>
       <span><span class="prob-dot" style="background:#94a3b8"></span>Draw <span class="prob-pct draw">${dr}%</span></span>
@@ -1930,7 +1985,8 @@ function renderProbBar(matchId, home, away, data) {
       <div class="prob-seg-home" style="width:${hw}%"></div>
       <div class="prob-seg-draw" style="width:${dr}%"></div>
       <div class="prob-seg-away" style="width:${aw}%"></div>
-    </div>`;
+    </div>
+    <div class="flex justify-center mt-2">${badge}</div>`;
 }
 
 // --- The Odds API integration ---------------------------------
