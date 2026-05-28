@@ -36,23 +36,83 @@
 
   // ---- Install button (Android Chrome / desktop Chrome / Edge) ----
   let deferredInstallPrompt = null;
+  let appWasInstalled = false;
+
+  function isRunningStandalone() {
+    return window.navigator.standalone === true
+      || window.matchMedia('(display-mode: standalone)').matches
+      || document.referrer.startsWith('android-app://');
+  }
+
+  function setInstallBtn(state, label) {
+    const btn = document.getElementById('installBtn');
+    if (!btn) return;
+    btn.dataset.state = state;
+    if (state === 'hidden') {
+      btn.classList.add('hidden');
+      return;
+    }
+    btn.classList.remove('hidden');
+    btn.querySelector('.install-btn-label').textContent = label;
+  }
+
+  // Decide what the button should show on load / whenever state changes
+  async function refreshInstallButton() {
+    // 1. Already running as the installed app → no button needed
+    if (isRunningStandalone()) {
+      setInstallBtn('hidden');
+      return;
+    }
+
+    // 2. Can we detect it's already installed (but opened in a browser tab)?
+    if ('getInstalledRelatedApps' in navigator) {
+      try {
+        const related = await navigator.getInstalledRelatedApps();
+        if (related && related.length) {
+          appWasInstalled = true;
+          setInstallBtn('installed', 'App Installed');
+          return;
+        }
+      } catch(_) {}
+    }
+
+    // 3. If we recorded an install this session
+    if (appWasInstalled) {
+      setInstallBtn('installed', 'App Installed');
+      return;
+    }
+
+    // 4. If we have a live install prompt ready → show installer
+    if (deferredInstallPrompt) {
+      setInstallBtn('installable', 'Install App');
+      return;
+    }
+
+    // 5. Nothing actionable yet — keep hidden until beforeinstallprompt fires.
+    //    (On iOS we never get here; the iOS tip handles that path.)
+    setInstallBtn('hidden');
+  }
 
   // Chrome fires this when the PWA meets installability criteria.
-  // We capture it so we can trigger the prompt from our own button.
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
-    const btn = document.getElementById('installBtn');
-    if (btn) btn.classList.remove('hidden');
-    console.log('[PWA] Install prompt available — button shown');
+    console.log('[PWA] Install prompt available');
+    refreshInstallButton();
   });
 
-  // Hide the button after the app is installed
+  // Fired after a successful install
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    const btn = document.getElementById('installBtn');
-    if (btn) btn.classList.add('hidden');
+    appWasInstalled = true;
     console.log('[PWA] App installed');
+    refreshInstallButton();
+  });
+
+  // Re-check when the user switches back to this tab (e.g. after installing
+  // from the browser menu, which doesn't always fire appinstalled in-page)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshInstallButton();
   });
 
   // Wire up the button after the DOM is ready
@@ -60,23 +120,43 @@
     const btn = document.getElementById('installBtn');
     if (btn) {
       btn.addEventListener('click', async () => {
-        if (!deferredInstallPrompt) return;
-        deferredInstallPrompt.prompt();
-        const { outcome } = await deferredInstallPrompt.userChoice;
-        console.log('[PWA] User choice:', outcome);
-        deferredInstallPrompt = null;
-        btn.classList.add('hidden');
+        const state = btn.dataset.state;
+
+        if (state === 'installable' && deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          console.log('[PWA] User choice:', outcome);
+          if (outcome === 'accepted') {
+            appWasInstalled = true;
+          } else {
+            // User dismissed — keep the prompt so they can try again later.
+            // (Chrome invalidates the event after use, so re-show only if it re-fires.)
+            deferredInstallPrompt = null;
+          }
+          refreshInstallButton();
+          return;
+        }
+
+        if (state === 'installed') {
+          // Web pages can't launch an installed PWA directly — guide the user.
+          alert(
+            "✅ The app is already installed!\n\n" +
+            "To open it, tap the \"WC 2026\" icon on your home screen or app drawer.\n\n" +
+            "(For security reasons, a website can't open its installed app for you automatically.)"
+          );
+          return;
+        }
       });
     }
 
+    // Initial state
+    refreshInstallButton();
+
     // ---- iOS path (no beforeinstallprompt support on Safari) ----
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isInStandaloneMode = window.navigator.standalone === true
-      || window.matchMedia('(display-mode: standalone)').matches;
     const tipDismissed = localStorage.getItem('iosInstallTipDismissed') === '1';
 
-    if (isIos && !isInStandaloneMode && !tipDismissed) {
-      // Wait a few seconds so it doesn't pop up before the user sees the page
+    if (isIos && !isRunningStandalone() && !tipDismissed) {
       setTimeout(() => {
         const tip = document.getElementById('iosInstallTip');
         if (tip) tip.classList.remove('hidden');
@@ -204,6 +284,30 @@
     .prob-loading::before { content:""; width:10px; height:10px; border-radius:50%; border:2px solid #475569; border-top-color:#f5c842; display:inline-block; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Probability source badges ── */
+    .prob-source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 3px 8px;
+      border-radius: 99px;
+      cursor: help;
+      user-select: none;
+    }
+    .prob-source-real {
+      background: rgba(34, 197, 94, 0.12);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+    .prob-source-ai {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+
     /* ── AI Preview ── */
     .ai-panel { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
@@ -329,11 +433,11 @@
      PWA INSTALL BUTTON (Android/desktop Chrome)
      iOS users get instructions via #iosInstallTip below
 ══════════════════════════════════════ -->
-<button id="installBtn"
+<button id="installBtn" data-state="hidden"
   class="hidden fixed bottom-5 right-5 z-40 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-full shadow-2xl px-5 py-3 flex items-center gap-2 transition-all active:scale-95"
   style="box-shadow: 0 8px 32px rgba(245,200,66,0.4);">
   <span class="text-lg">📲</span>
-  <span class="text-sm">Install App</span>
+  <span class="install-btn-label text-sm">Install App</span>
 </button>
 
 <!-- iOS install tip (iOS doesn't support beforeinstallprompt) -->
@@ -967,7 +1071,7 @@ const ANTHROPIC_PROXY_URL = "https://calm-sound-8b6d.mailtosanjeewa.workers.dev"
 // Returns real bookmaker odds (Bet365, Pinnacle, Bet365, William Hill, etc.)
 // converted to win/draw/loss probabilities. If the key is empty or the API
 // is rate-limited, the app falls back to AI-estimated probabilities.
-const ODDS_API_KEY = "b866ae5fc17fc4ac795b2449759022d5"; // ← paste your key here, e.g. "abc123def456..."
+const ODDS_API_KEY = ""; // ← paste your key here, e.g. "abc123def456..."
 const ODDS_API_REGION = "uk"; // bookmakers region: "uk" / "eu" / "us" / "au"
                               // "uk" and "eu" include Bet365; "us" doesn't.
 
@@ -1801,11 +1905,22 @@ function renderProbBar(matchId, home, away, data) {
   const hw = Math.round(data.home);
   const dr = Math.round(data.draw);
   const aw = Math.round(data.away);
-  const sourceLabel = data.source === "odds"
-    ? `Real bookmaker odds · ${data.book || "consensus"}`
-    : "AI estimated probability · for entertainment only";
+
+  // Build a prominent badge so users can tell real odds from AI estimates at a glance
+  let badge;
+  if (data.source === "odds") {
+    const bookLabel = data.book || "consensus";
+    badge = `<span class="prob-source-badge prob-source-real" title="Win/draw/loss probabilities derived from real bookmaker odds via The Odds API. Overround has been removed to show fair probabilities.">
+      📊 BOOKMAKER ODDS · ${escapeHtml(bookLabel)}
+    </span>`;
+  } else {
+    badge = `<span class="prob-source-badge prob-source-ai" title="No bookmaker odds available for this fixture yet — these probabilities are an AI estimate based on form, FIFA ranking, and squad strength. For entertainment only.">
+      🤖 AI ESTIMATE
+    </span>`;
+  }
 
   el.innerHTML = `
+    <div class="flex justify-end mb-1.5">${badge}</div>
     <div class="prob-labels mb-1">
       <span><span class="prob-dot" style="background:#22c55e"></span>${escapeHtml(home)} <span class="prob-pct home">${hw}%</span></span>
       <span><span class="prob-dot" style="background:#94a3b8"></span>Draw <span class="prob-pct draw">${dr}%</span></span>
@@ -1815,8 +1930,7 @@ function renderProbBar(matchId, home, away, data) {
       <div class="prob-seg-home" style="width:${hw}%"></div>
       <div class="prob-seg-draw" style="width:${dr}%"></div>
       <div class="prob-seg-away" style="width:${aw}%"></div>
-    </div>
-    <div class="text-center text-slate-600" style="font-size:0.6rem;margin-top:2px;">${sourceLabel}</div>`;
+    </div>`;
 }
 
 // --- The Odds API integration ---------------------------------
