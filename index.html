@@ -26,7 +26,8 @@
   // ---- Service Worker ----
   // Relative path so this works on GitHub Pages (served from /repo-name/)
   // as well as from the root of a custom domain.
-  if ('serviceWorker' in navigator) {
+  // Skip on Claude's preview iframe where there's no SW file to fetch.
+  if ('serviceWorker' in navigator && !/claudeusercontent\.com$/.test(location.hostname)) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./service-worker.js')
         .then(reg => console.log('[PWA] SW registered:', reg.scope))
@@ -389,6 +390,22 @@
       background: linear-gradient(135deg, #f5c842, #f97316);
       display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: 0.8rem; color: #000; flex-shrink: 0;
+      overflow: hidden; /* clip oversized flag glyph to the circle */
+    }
+    /* When the avatar contains a country flag, drop the gold gradient
+       and let the flag fill the whole circle. */
+    .user-avatar.has-flag {
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .user-avatar .flag-fill {
+      /* Scale the flag glyph well past the circle so its central rectangle
+         covers the whole avatar — overflow:hidden + border-radius:50% crops
+         the edges into a clean disc. */
+      display: block;
+      font-size: 2.6em;
+      line-height: 1;
+      transform: translateY(0.02em); /* nudge for visual centring */
     }
   </style>
 </head>
@@ -1333,7 +1350,13 @@ onAuthStateChanged(auth, async user => {
     const myFlag = userFlagCache[user.uid];
     ["hdrAvatar","predAvatar"].forEach(id => {
       const el = document.getElementById(id);
-      el.innerHTML = myFlag ? `<span style="font-size:1.2em;line-height:1">${myFlag}</span>` : initials;
+      if (myFlag) {
+        el.classList.add("has-flag");
+        el.innerHTML = `<span class="flag-fill">${myFlag}</span>`;
+      } else {
+        el.classList.remove("has-flag");
+        el.innerHTML = initials;
+      }
     });
     document.getElementById("hdrName").textContent  = name;
     document.getElementById("predName").textContent = name;
@@ -1748,11 +1771,12 @@ async function refreshUserFlags() {
   }
 }
 
-// Returns the avatar inner content for a user: their flag if they have one,
-// otherwise their initials. `initials` is the fallback string.
+// Returns { html, hasFlag } so callers can apply the has-flag class to the
+// parent avatar container and let the flag fill the whole circle.
 function avatarContent(uid, initials) {
   const flag = uid && userFlagCache[uid];
-  return flag ? `<span style="font-size:1.15em;line-height:1">${flag}</span>` : initials;
+  if (flag) return { html: `<span class="flag-fill">${flag}</span>`, hasFlag: true };
+  return { html: initials, hasFlag: false };
 }
 
 
@@ -2594,11 +2618,12 @@ async function renderAllPicks() {
         }
       }
 
+      const av = avatarContent(p.uid, p.name.slice(0,2).toUpperCase());
       const row = document.createElement("div");
       row.className = `flex items-center justify-between gap-3 px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
       row.innerHTML = `
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="user-avatar flex-shrink-0" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${avatarContent(p.uid, p.name.slice(0,2).toUpperCase())}</div>
+          <div class="user-avatar flex-shrink-0 ${av.hasFlag?'has-flag':''}" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${av.html}</div>
           <span class="text-sm font-medium truncate">${p.name}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
@@ -2636,6 +2661,7 @@ async function buildReportDataset() {
   });
 
   const rows = [];
+  const myUid = currentUser?.uid;
   players.forEach(p => {
     matches.forEach(m => {
       const pred = p.preds[m.id];
@@ -2654,6 +2680,11 @@ async function buildReportDataset() {
         outcome = "pending";
       }
 
+      // Hide the pick value until the match has kicked off — fair play.
+      // Always show the user their own picks.
+      const kickedOff = m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs;
+      const pickHidden = !kickedOff && p.uid !== myUid;
+
       rows.push({
         uid: p.uid,
         player: p.name,
@@ -2664,6 +2695,8 @@ async function buildReportDataset() {
         kickoffMs: m.kickoffUtcMs || 0,
         kickoff: fmtLocal(m.kickoffUtcMs),
         pick: hasPred ? `${pred.home}–${pred.away}` : "",
+        pickHidden,
+        hasPred,
         result: hasResult ? `${act.home}–${act.away}` : "",
         completed: hasResult,
         outcome,
@@ -2700,7 +2733,13 @@ function applyReportFilters(rows, f) {
     if (f.stage && r.stage !== f.stage) return false;
     if (f.status === "completed" && !r.completed) return false;
     if (f.status === "pending" && r.completed) return false;
-    if (f.outcome && r.outcome !== f.outcome) return false;
+    // Outcome filter is masked for hidden rows: they only match if the user
+    // explicitly asks for "pending" (which is the catch-all hidden-state).
+    if (f.outcome) {
+      if (r.pickHidden) {
+        if (f.outcome !== "pending") return false;
+      } else if (r.outcome !== f.outcome) return false;
+    }
     if (f.search && !(r.home.toLowerCase().includes(f.search) || r.away.toLowerCase().includes(f.search))) return false;
     return true;
   });
@@ -2720,10 +2759,12 @@ function renderReport() {
   // Sort: most recent kickoff first, then player
   rows.sort((a,b) => (b.kickoffMs - a.kickoffMs) || a.player.localeCompare(b.player));
 
-  // Summary stats (over the filtered set)
-  const totalPts = rows.reduce((s,r)=>s+r.pts,0);
-  const exactCount = rows.filter(r=>r.outcome==="exact").length;
-  const correctCount = rows.filter(r=>r.outcome==="correct").length;
+  // Summary stats (over the filtered set) — hidden rows don't contribute,
+  // otherwise the totals would leak whether someone picked or not.
+  const visible = rows.filter(r => !r.pickHidden);
+  const totalPts = visible.reduce((s,r)=>s+r.pts,0);
+  const exactCount = visible.filter(r=>r.outcome==="exact").length;
+  const correctCount = visible.filter(r=>r.outcome==="correct").length;
   const playersShown = new Set(rows.map(r=>r.player)).size;
 
   document.getElementById("reportSummary").innerHTML = `
@@ -2755,17 +2796,35 @@ function renderReport() {
   }
   empty.classList.add("hidden");
 
-  body.innerHTML = rows.map(r => `
+  body.innerHTML = rows.map(r => {
+    // Mask the pick if it's another player's prediction before kickoff
+    const pickCell = r.pickHidden
+      ? `<span class="text-slate-600 italic text-xs">🔒 hidden until kickoff</span>`
+      : (r.pick
+          ? `<span class="font-mono text-white">${r.pick}</span>`
+          : `<span class="font-mono text-slate-600">—</span>`);
+    // For hidden rows, also mask the outcome badge so it doesn't leak the pick status
+    const outcomeCell = r.pickHidden
+      ? `<span class="pick-pending rounded px-2 py-0.5 text-xs font-medium">🔒 Hidden</span>`
+      : OUTCOME_BADGE[r.outcome];
+    // No leaked points either
+    const ptsCell = r.pickHidden
+      ? `<span class="text-slate-600">—</span>`
+      : (r.pts>0 ? (r.pts%1===0?r.pts:r.pts.toFixed(1)) : "0");
+    const ptsClass = r.pickHidden ? "" : (r.pts>0?'text-green-400':'text-slate-600');
+
+    return `
     <tr class="border-b border-slate-800 hover:bg-white/3 transition">
       <td class="py-2.5 px-3 font-medium whitespace-nowrap">${r.flag ? r.flag + " " : ""}${escapeHtml(r.player)}</td>
       <td class="py-2.5 px-3 whitespace-nowrap">${escapeHtml(r.match)}</td>
       <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${r.stage==='Knockout'?'badge-knockout':'badge-group'}">${r.stage}</span></td>
       <td class="py-2.5 px-3 text-slate-400 text-xs whitespace-nowrap">${escapeHtml(r.kickoff)}</td>
-      <td class="py-2.5 px-3 font-mono ${r.pick?'text-white':'text-slate-600'}">${r.pick || "—"}</td>
+      <td class="py-2.5 px-3">${pickCell}</td>
       <td class="py-2.5 px-3 font-mono ${r.result?'text-yellow-400':'text-slate-600'}">${r.result || "—"}</td>
-      <td class="py-2.5 px-3">${OUTCOME_BADGE[r.outcome]}</td>
-      <td class="py-2.5 px-3 text-right font-bold ${r.pts>0?'text-green-400':'text-slate-600'}">${r.pts>0 ? (r.pts%1===0?r.pts:r.pts.toFixed(1)) : "0"}</td>
-    </tr>`).join("");
+      <td class="py-2.5 px-3">${outcomeCell}</td>
+      <td class="py-2.5 px-3 text-right font-bold ${ptsClass}">${ptsCell}</td>
+    </tr>`;
+  }).join("");
 }
 
 function exportReportCSV() {
@@ -2780,10 +2839,12 @@ function exportReportCSV() {
   };
   const lines = [header.join(",")];
   rows.forEach(r => {
+    const pickOut    = r.pickHidden ? "(hidden)" : (r.pick || "");
+    const outcomeOut = r.pickHidden ? "hidden"   : r.outcome;
+    const ptsOut     = r.pickHidden ? ""         : r.pts;
     lines.push([
       r.player, r.match, r.stage, r.kickoff,
-      r.pick || "", r.result || "", r.outcome,
-      r.pts
+      pickOut, r.result || "", outcomeOut, ptsOut
     ].map(esc).join(","));
   });
 
@@ -3220,7 +3281,14 @@ async function saveMyTournamentPicksFromUI() {
       const init = (currentUser.displayName || currentUser.email).slice(0,2).toUpperCase();
       ["hdrAvatar","predAvatar"].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = f ? `<span style="font-size:1.2em;line-height:1">${f}</span>` : init;
+        if (!el) return;
+        if (f) {
+          el.classList.add("has-flag");
+          el.innerHTML = `<span class="flag-fill">${f}</span>`;
+        } else {
+          el.classList.remove("has-flag");
+          el.innerHTML = init;
+        }
       });
     }
     calculateLeaderboard();
