@@ -390,7 +390,7 @@
       background: linear-gradient(135deg, #f5c842, #f97316);
       display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: 0.8rem; color: #000; flex-shrink: 0;
-      overflow: hidden; /* clip oversized flag glyph to the circle */
+      overflow: hidden; /* clip flag image to the circle */
     }
     /* When the avatar contains a country flag, drop the gold gradient
        and let the flag fill the whole circle. */
@@ -399,13 +399,27 @@
       border: 1px solid rgba(255,255,255,0.08);
     }
     .user-avatar .flag-fill {
-      /* Scale the flag glyph well past the circle so its central rectangle
-         covers the whole avatar — overflow:hidden + border-radius:50% crops
-         the edges into a clean disc. */
+      width: 100%; height: 100%;
       display: block;
-      font-size: 2.6em;
-      line-height: 1;
-      transform: translateY(0.02em); /* nudge for visual centring */
+    }
+    .user-avatar .flag-fill .flag-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 50%;
+      margin: 0;
+      box-shadow: none;
+      vertical-align: top;
+    }
+    /* Inline flag (next to a player's name in tables/lists) */
+    .flag-img {
+      display: inline-block;
+      height: 0.95em;
+      width: auto;
+      vertical-align: -0.12em;
+      margin-right: 0.35em;
+      border-radius: 2px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
     }
   </style>
 </head>
@@ -1711,9 +1725,10 @@ async function getAllNations() {
   return Array.from(set).sort((a,b) => a.localeCompare(b));
 }
 
-// ── NATION → FLAG EMOJI ───────────────────────────────────────
-// Maps a nation name to its ISO-3166 alpha-2 code, then to a flag emoji
-// (regional-indicator pair). Covers all likely WC nations + common aliases.
+// ── NATION → FLAG IMAGE ───────────────────────────────────────
+// We render flags as <img> tags from flagcdn.com (free, no key, HTTPS) because
+// Windows doesn't ship flag emoji glyphs — emoji flags show as "BR", "AR", etc.
+// instead of actual flags. Images work on every OS.
 const NATION_ISO = {
   "argentina":"ar","australia":"au","austria":"at","belgium":"be","brazil":"br",
   "canada":"ca","cape verde":"cv","colombia":"co","croatia":"hr","curacao":"cw",
@@ -1733,25 +1748,18 @@ const NATION_ISO = {
   "chile":"cl","bolivia":"bo","venezuela":"ve","honduras":"hn"
 };
 
-// England/Scotland/Wales use subdivision flag emoji (tag sequences)
-const SUBDIVISION_FLAGS = {
-  "gb-eng":"🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
-  "gb-sct":"🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
-  "gb-wls":"🏴\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}"
-};
-
+// Returns an HTML <img> tag for the flag, or an empty string for unknown nations.
+// flagcdn.com serves PNGs at predictable URLs: https://flagcdn.com/w80/{iso}.png
+// Note: flagcdn is an ISO 3166-1 service so subdivisions (England/Scotland/Wales)
+// don't have dedicated flags there — we fall back to the GB flag for those.
 function nationToFlag(nation) {
   if (!nation) return "";
-  const iso = NATION_ISO[nation.trim().toLowerCase()];
+  let iso = NATION_ISO[nation.trim().toLowerCase()];
   if (!iso) return "";
-  if (SUBDIVISION_FLAGS[iso]) return SUBDIVISION_FLAGS[iso];
-  // Standard 2-letter country → regional indicator symbols
-  if (iso.length !== 2) return "";
-  const base = 0x1F1E6;
-  return String.fromCodePoint(
-    base + (iso.charCodeAt(0) - 97),
-    base + (iso.charCodeAt(1) - 97)
-  );
+  // flagcdn doesn't host subdivision flags — use the parent country instead
+  if (iso.startsWith("gb-")) iso = "gb";
+  const name = escapeHtml(nation);
+  return `<img src="https://flagcdn.com/w80/${iso}.png" alt="${name}" title="${name}" class="flag-img" loading="lazy" />`;
 }
 
 // Cache of uid → flag emoji, derived from each user's champion 1st choice
@@ -2122,7 +2130,7 @@ async function calculateLeaderboard() {
     row.innerHTML = `
       <td class="py-4 px-3 font-bold display-font text-lg ${rc}">${re}</td>
       <td class="py-4 px-3 font-medium">
-        ${(userFlagCache[e.uid] ? userFlagCache[e.uid] + " " : "")}${escapeHtml(e.user)}
+        ${userFlagCache[e.uid] || ""}${escapeHtml(e.user)}
         ${e.isMe?'<span class="ml-2 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full">You</span>':""}
       </td>
       <td class="py-4 px-3 text-slate-300">${e.exact}</td>
@@ -2815,7 +2823,7 @@ function renderReport() {
 
     return `
     <tr class="border-b border-slate-800 hover:bg-white/3 transition">
-      <td class="py-2.5 px-3 font-medium whitespace-nowrap">${r.flag ? r.flag + " " : ""}${escapeHtml(r.player)}</td>
+      <td class="py-2.5 px-3 font-medium whitespace-nowrap">${r.flag || ""}${escapeHtml(r.player)}</td>
       <td class="py-2.5 px-3 whitespace-nowrap">${escapeHtml(r.match)}</td>
       <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${r.stage==='Knockout'?'badge-knockout':'badge-group'}">${r.stage}</span></td>
       <td class="py-2.5 px-3 text-slate-400 text-xs whitespace-nowrap">${escapeHtml(r.kickoff)}</td>
