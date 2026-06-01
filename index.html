@@ -38,6 +38,7 @@
   // ---- Install button (Android Chrome / desktop Chrome / Edge) ----
   let deferredInstallPrompt = null;
   let appWasInstalled = false;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   function isRunningStandalone() {
     return window.navigator.standalone === true
@@ -45,27 +46,53 @@
       || document.referrer.startsWith('android-app://');
   }
 
+  // Sets state for BOTH the floating bottom-right button and the nav button.
+  // The nav button is always visible (except when running inside the installed
+  // app), so users have a single permanent entry point regardless of platform.
   function setInstallBtn(state, label) {
-    const btn = document.getElementById('installBtn');
-    if (!btn) return;
-    btn.dataset.state = state;
-    if (state === 'hidden') {
-      btn.classList.add('hidden');
-      return;
+    // Floating button
+    const floating = document.getElementById('installBtn');
+    if (floating) {
+      floating.dataset.state = state;
+      if (state === 'hidden') {
+        floating.classList.add('hidden');
+      } else {
+        floating.classList.remove('hidden');
+        const lbl = floating.querySelector('.install-btn-label');
+        if (lbl) lbl.textContent = label;
+      }
     }
-    btn.classList.remove('hidden');
-    btn.querySelector('.install-btn-label').textContent = label;
+
+    // Nav button — always visible unless we're inside the installed app
+    const nav = document.getElementById('navInstallBtn');
+    if (nav) {
+      nav.dataset.state = state;
+      if (state === 'hidden') {
+        nav.classList.add('hidden');
+      } else {
+        nav.classList.remove('hidden');
+        // Map state → emoji + label for the nav button
+        const navLabels = {
+          installable:  '📲 Install App',
+          installed:    '✅ Installed',
+          instructions: '📲 Install'
+        };
+        nav.textContent = navLabels[state] || ('📲 ' + label);
+        // Visual cue when an install prompt is actually ready
+        nav.classList.toggle('install-ready', state === 'installable');
+      }
+    }
   }
 
   // Decide what the button should show on load / whenever state changes
   async function refreshInstallButton() {
-    // 1. Already running as the installed app → no button needed
+    // 1. Already running as the installed app → hide entirely
     if (isRunningStandalone()) {
       setInstallBtn('hidden');
       return;
     }
 
-    // 2. Can we detect it's already installed (but opened in a browser tab)?
+    // 2. Detect "already installed but opened in a browser tab" (Chrome only)
     if ('getInstalledRelatedApps' in navigator) {
       try {
         const related = await navigator.getInstalledRelatedApps();
@@ -77,21 +104,23 @@
       } catch(_) {}
     }
 
-    // 3. If we recorded an install this session
+    // 3. We recorded an install in this session
     if (appWasInstalled) {
       setInstallBtn('installed', 'App Installed');
       return;
     }
 
-    // 4. If we have a live install prompt ready → show installer
+    // 4. Live install prompt ready (Android Chrome / desktop Chrome / Edge)
     if (deferredInstallPrompt) {
       setInstallBtn('installable', 'Install App');
       return;
     }
 
-    // 5. Nothing actionable yet — keep hidden until beforeinstallprompt fires.
-    //    (On iOS we never get here; the iOS tip handles that path.)
-    setInstallBtn('hidden');
+    // 5. No automatic prompt available yet — show the button anyway with a
+    //    "tap me for instructions" state. Especially important on iOS Safari
+    //    (which never fires beforeinstallprompt) but also useful while Chrome's
+    //    engagement heuristic decides whether to fire it.
+    setInstallBtn('instructions', 'Install');
   }
 
   // Chrome fires this when the PWA meets installability criteria.
@@ -102,7 +131,6 @@
     refreshInstallButton();
   });
 
-  // Fired after a successful install
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     appWasInstalled = true;
@@ -110,60 +138,79 @@
     refreshInstallButton();
   });
 
-  // Re-check when the user switches back to this tab (e.g. after installing
-  // from the browser menu, which doesn't always fire appinstalled in-page)
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refreshInstallButton();
   });
 
-  // Wire up the button after the DOM is ready
-  window.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('installBtn');
-    if (btn) {
-      btn.addEventListener('click', async () => {
-        const state = btn.dataset.state;
+  // Shared click handler for both buttons
+  async function handleInstallClick(btn) {
+    const state = btn.dataset.state;
 
-        if (state === 'installable' && deferredInstallPrompt) {
-          deferredInstallPrompt.prompt();
-          const { outcome } = await deferredInstallPrompt.userChoice;
-          console.log('[PWA] User choice:', outcome);
-          if (outcome === 'accepted') {
-            appWasInstalled = true;
-          } else {
-            // User dismissed — keep the prompt so they can try again later.
-            // (Chrome invalidates the event after use, so re-show only if it re-fires.)
-            deferredInstallPrompt = null;
-          }
-          refreshInstallButton();
-          return;
-        }
-
-        if (state === 'installed') {
-          // Web pages can't launch an installed PWA directly — guide the user.
-          alert(
-            "✅ The app is already installed!\n\n" +
-            "To open it, tap the \"WC 2026\" icon on your home screen or app drawer.\n\n" +
-            "(For security reasons, a website can't open its installed app for you automatically.)"
-          );
-          return;
-        }
-      });
+    if (state === 'installable' && deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      console.log('[PWA] User choice:', outcome);
+      if (outcome === 'accepted') appWasInstalled = true;
+      else deferredInstallPrompt = null;
+      refreshInstallButton();
+      return;
     }
 
-    // Initial state
+    if (state === 'installed') {
+      alert(
+        "✅ The app is already installed!\n\n" +
+        "To open it, tap the \"WC 2026\" icon on your home screen or app drawer.\n\n" +
+        "(For security reasons, a website can't open its installed app for you automatically.)"
+      );
+      return;
+    }
+
+    // state === 'instructions' — give platform-specific install steps
+    if (isIos) {
+      alert(
+        "📲 Install on iPhone / iPad\n\n" +
+        "1. Tap the Share button at the bottom of Safari (square with an up-arrow).\n" +
+        "2. Scroll down and tap \"Add to Home Screen\".\n" +
+        "3. Tap \"Add\" in the top-right.\n\n" +
+        "The WC 2026 icon will appear on your home screen and launch like a real app."
+      );
+    } else if (/android/i.test(navigator.userAgent)) {
+      alert(
+        "📲 Install on Android\n\n" +
+        "If you don't see an install prompt automatically:\n" +
+        "1. Open the Chrome ⋮ menu (top-right).\n" +
+        "2. Tap \"Install app\" or \"Add to Home screen\".\n" +
+        "3. Confirm \"Install\".\n\n" +
+        "Note: Chrome only enables install after a few seconds of activity on the page. Scroll/tap around for a moment and try again — the button will turn gold once it's ready."
+      );
+    } else {
+      alert(
+        "📲 Install as a Desktop App\n\n" +
+        "In Chrome or Edge: look for the install icon (⊕ or a small monitor) at the right end of the address bar, OR open the ⋮ menu and pick \"Install app\".\n\n" +
+        "If you don't see those options, your browser may not support PWA install — try Chrome or Edge."
+      );
+    }
+  }
+
+  // Wire up both buttons after the DOM is ready
+  window.addEventListener('DOMContentLoaded', () => {
+    const floating = document.getElementById('installBtn');
+    if (floating) floating.addEventListener('click', () => handleInstallClick(floating));
+
+    const nav = document.getElementById('navInstallBtn');
+    if (nav) nav.addEventListener('click', () => handleInstallClick(nav));
+
     refreshInstallButton();
 
-    // ---- iOS path (no beforeinstallprompt support on Safari) ----
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    // ---- iOS one-time tip (still shown in addition to the nav button so
+    // newcomers immediately discover they can install) ----
     const tipDismissed = localStorage.getItem('iosInstallTipDismissed') === '1';
-
     if (isIos && !isRunningStandalone() && !tipDismissed) {
       setTimeout(() => {
         const tip = document.getElementById('iosInstallTip');
         if (tip) tip.classList.remove('hidden');
       }, 4000);
     }
-
     const dismissBtn = document.getElementById('dismissIosTip');
     if (dismissBtn) {
       dismissBtn.addEventListener('click', () => {
@@ -273,6 +320,19 @@
     @media (max-width: 640px) {
       .nav-group { flex: 1 1 auto; }
       .nav-group-btns { flex-wrap: wrap; }
+    }
+
+    /* Install button in nav — highlight when an install prompt is ready to fire */
+    #navInstallBtn.install-ready {
+      background: var(--gold);
+      color: #000;
+      border-color: var(--gold);
+      font-weight: 700;
+      animation: install-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes install-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245,200,66,0.0); }
+      50%      { box-shadow: 0 0 0 4px rgba(245,200,66,0.25); }
     }
 
     /* ── All Picks tab ── */
@@ -569,6 +629,7 @@
         <div class="nav-group">
           <span class="nav-group-label">&nbsp;</span>
           <div class="nav-group-btns">
+            <button id="navInstallBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-300 text-sm" type="button">📲 Install</button>
             <button id="adminTabBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
           </div>
         </div>
@@ -3382,6 +3443,8 @@ setupTournamentTab();
 // ── TABS ──────────────────────────────────────────────────────
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
+    // Skip buttons that aren't real tab switches (e.g. the Install button)
+    if (!btn.dataset.tab) return;
     document.querySelectorAll(".tab-btn").forEach(b => { b.classList.remove("tab-active"); b.classList.add("bg-slate-800"); });
     btn.classList.add("tab-active"); btn.classList.remove("bg-slate-800");
     document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
