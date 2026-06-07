@@ -481,6 +481,82 @@
       border-radius: 2px;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
     }
+
+    /* ── Bracket ── */
+    .bkt-team {
+      display: flex; align-items: center; gap: 6px;
+      width: 100%;
+      background: rgba(15,23,42,0.7);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 0.78rem;
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      text-align: left;
+      min-height: 34px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .bkt-team:hover:not(.bkt-empty) { border-color: rgba(245,200,66,0.5); background: rgba(245,200,66,0.06); }
+    .bkt-team.bkt-advanced { border-color: rgba(245,200,66,0.7); background: rgba(245,200,66,0.12); color: #fde68a; font-weight: 700; }
+    .bkt-team.bkt-empty { color: #475569; cursor: default; font-style: italic; }
+    .bkt-team .bkt-flag { height: 0.95em; width: auto; border-radius: 2px; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(255,255,255,0.06); margin: 0; }
+    .bkt-team .bkt-name { overflow: hidden; text-overflow: ellipsis; }
+    .bkt-team .bkt-seed { color: #64748b; font-size: 0.62rem; font-weight: 700; flex-shrink: 0; }
+
+    .bkt-match {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 5px;
+      background: rgba(2,8,23,0.4);
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .bkt-round { display: flex; flex-direction: column; gap: 10px; min-width: 188px; }
+    .bkt-round-title {
+      font-family: 'Bebas Neue', cursive; letter-spacing: 0.08em;
+      color: var(--gold); font-size: 0.95rem; text-align: center;
+      padding-bottom: 4px; border-bottom: 1px solid rgba(245,200,66,0.2); margin-bottom: 2px;
+    }
+    .bkt-cols { display: flex; gap: 14px; align-items: stretch; }
+    /* R32 manual override select */
+    .bkt-r32-edit {
+      width: 100%;
+      background: rgba(2,8,23,0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 5px 7px;
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+    .third-chip {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(15,23,42,0.6);
+      border-radius: 9px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: all 0.12s ease;
+      user-select: none;
+    }
+    .third-chip:hover { border-color: rgba(245,200,66,0.4); }
+    .third-chip.on { border-color: rgba(34,197,94,0.6); background: rgba(34,197,94,0.12); color: #4ade80; font-weight: 600; }
+    .third-chip.off.full { opacity: 0.45; }
+    .third-chip .third-flag { height: 0.95em; border-radius: 2px; flex-shrink: 0; }
+    .bkt-group-sel {
+      width: 100%;
+      background: rgba(2,8,23,0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 7px;
+      padding: 5px 7px;
+      font-size: 0.76rem;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .bkt-pos-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; width: 28px; flex-shrink: 0; }
   </style>
 </head>
 
@@ -602,6 +678,7 @@
             <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm" data-tab="predictTab">⚽ Predict</button>
             <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="predictionsTab">👀 Games</button>
             <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Cup</button>
+            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="bracketTab">🗺️ Bracket</button>
           </div>
         </div>
 
@@ -842,6 +919,96 @@
     <div id="tournamentViewEmpty" class="hidden glass rounded-2xl p-10 text-center">
       <div class="text-5xl mb-3">🤷</div>
       <div class="text-slate-400">This player hasn't saved tournament picks.</div>
+    </div>
+
+  </section>
+
+  <!-- BRACKET TAB -->
+  <section id="bracketTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Bracket Predictor</h2>
+      <p class="text-slate-400 text-sm">Predict group winners, the 8 best third-placed teams, then fill out the knockout bracket all the way to the cup.</p>
+      <div class="mt-3 inline-flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300">
+        <span>ℹ️</span> Just for fun — these picks do <strong class="text-yellow-300">not</strong> count towards your points.
+      </div>
+    </div>
+
+    <!-- Player filter -->
+    <div class="glass rounded-2xl p-5">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <label class="text-sm font-medium text-slate-300 whitespace-nowrap">View bracket for:</label>
+        <select id="bracketPlayerFilter"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-yellow-500 transition text-white flex-1">
+          <option value="__me">My bracket (edit mode)</option>
+        </select>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">Everyone's submitted brackets are visible to all players.</p>
+    </div>
+
+    <!-- ── EDIT MODE ── -->
+    <div id="bracketEditMode" class="space-y-5">
+
+      <!-- Step 1: Group standings -->
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h3 class="display-font text-2xl text-yellow-400">① Group Stage</h3>
+          <button id="bracketAutoFill" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition">↻ Reset to seeding order</button>
+        </div>
+        <p class="text-slate-400 text-sm mb-4">For each group, set the finishing order 1st → 4th. The top 2 auto-qualify; 3rd-placed teams compete for 8 wildcard spots below.</p>
+        <div id="bracketGroups" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- Step 2: Best third-placed teams -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-1">② Best Third-Placed Teams</h3>
+        <p class="text-slate-400 text-sm mb-4">Pick exactly <strong class="text-yellow-300">8 of the 12</strong> third-placed teams to advance. <span id="thirdCount" class="text-slate-300"></span></p>
+        <div id="bracketThirds" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5"></div>
+      </div>
+
+      <!-- Step 3: Knockout bracket -->
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h3 class="display-font text-2xl text-yellow-400">③ Knockout Bracket</h3>
+          <button id="bracketRebuild" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition">↻ Re-seed from groups above</button>
+        </div>
+        <p class="text-slate-400 text-sm mb-4">The Round of 32 auto-fills from your group picks. Click a team to advance them to the next round. You can also manually change any Round-of-32 slot if you want.</p>
+        <div id="bracketKnockout" class="overflow-x-auto pb-2"></div>
+      </div>
+
+      <!-- Champion banner -->
+      <div id="bracketChampionWrap" class="hidden glass rounded-2xl p-6 text-center border border-yellow-500/40 bg-yellow-400/5">
+        <div class="text-xs text-slate-400 uppercase tracking-widest mb-1">Your predicted champion</div>
+        <div id="bracketChampion" class="display-font text-4xl text-yellow-400"></div>
+      </div>
+
+      <!-- Save -->
+      <div class="glass rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="text-sm text-slate-400"><span id="bracketSaveStatus">Your bracket saves only when you press Save.</span></div>
+        <button id="saveBracketBtn"
+          class="bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-bold px-7 py-3 rounded-xl transition-all">
+          💾 Save Bracket
+        </button>
+      </div>
+    </div>
+
+    <!-- ── VIEW MODE (another player) ── -->
+    <div id="bracketViewMode" class="hidden space-y-5">
+      <div class="glass rounded-2xl p-6">
+        <h3 class="display-font text-2xl text-yellow-400 mb-1">Knockout Bracket</h3>
+        <p class="text-slate-400 text-sm mb-4" id="bracketViewSubtitle">—</p>
+        <div id="bracketViewKnockout" class="overflow-x-auto pb-2"></div>
+      </div>
+      <div id="bracketViewChampionWrap" class="hidden glass rounded-2xl p-6 text-center border border-yellow-500/40 bg-yellow-400/5">
+        <div class="text-xs text-slate-400 uppercase tracking-widest mb-1">Predicted champion</div>
+        <div id="bracketViewChampion" class="display-font text-4xl text-yellow-400"></div>
+      </div>
+    </div>
+
+    <!-- ── EMPTY ── -->
+    <div id="bracketViewEmpty" class="hidden glass rounded-2xl p-10 text-center">
+      <div class="text-5xl mb-3">🗺️</div>
+      <div class="text-slate-400">This player hasn't saved a bracket yet.</div>
     </div>
 
   </section>
@@ -2949,6 +3116,580 @@ function setupReportsTab() {
 }
 setupReportsTab();
 
+// ══════════════════════════════════════════════════════════════
+// BRACKET PREDICTOR (group winners → knockout → cup)
+// Non-scored, prediction-only. Stored in Firestore collection bracketPicks.
+// ══════════════════════════════════════════════════════════════
+
+// Qualified nations by group (seeding order). Source of truth for the bracket.
+const BRACKET_GROUPS = {
+  A: ["Mexico","South Africa","South Korea","Czechia"],
+  B: ["Canada","Bosnia and Herzegovina","Qatar","Switzerland"],
+  C: ["Brazil","Morocco","Haiti","Scotland"],
+  D: ["United States","Paraguay","Australia","Türkiye"],
+  E: ["Germany","Curaçao","Ivory Coast","Ecuador"],
+  F: ["Netherlands","Japan","Sweden","Tunisia"],
+  G: ["Belgium","Egypt","Iran","New Zealand"],
+  H: ["Spain","Cape Verde","Saudi Arabia","Uruguay"],
+  I: ["France","Senegal","Iraq","Norway"],
+  J: ["Argentina","Algeria","Austria","Jordan"],
+  K: ["Portugal","DR Congo","Uzbekistan","Colombia"],
+  L: ["England","Croatia","Ghana","Panama"]
+};
+const GROUP_LETTERS = Object.keys(BRACKET_GROUPS);
+
+// Flags for bracket teams (some aren't in NATION_ISO yet — extend locally)
+const BRACKET_ISO_EXTRA = {
+  "bosnia and herzegovina":"ba","iraq":"iq"
+};
+function bracketFlagImg(team, cls) {
+  let iso = NATION_ISO[(team||"").trim().toLowerCase()] || BRACKET_ISO_EXTRA[(team||"").trim().toLowerCase()];
+  if (!iso) return "";
+  if (iso.startsWith("gb-")) iso = "gb";
+  return `<img src="https://flagcdn.com/w40/${iso}.png" alt="" class="${cls||'bkt-flag'}" loading="lazy" />`;
+}
+
+// Round-of-32 structure read from the official bracket graphic.
+// Each match has two slots. A slot is one of:
+//   {type:'winner', group:'E'}      → 1st place of group E
+//   {type:'runner', group:'A'}      → 2nd place of group A
+//   {type:'third',  groups:[...]}   → a 3rd-placed team from one of these groups
+// Order is the true bracket order: matches 1&2 feed R16-1, 3&4 feed R16-2, …
+const R32 = [
+  { home:{type:'winner',group:'E'}, away:{type:'third',groups:['A','B','C','D','F']} },
+  { home:{type:'winner',group:'I'}, away:{type:'third',groups:['C','D','F','G','H']} },
+  { home:{type:'runner',group:'A'}, away:{type:'runner',group:'B'} },
+  { home:{type:'winner',group:'F'}, away:{type:'runner',group:'C'} },
+  { home:{type:'runner',group:'K'}, away:{type:'runner',group:'L'} },
+  { home:{type:'winner',group:'H'}, away:{type:'runner',group:'J'} },
+  { home:{type:'winner',group:'D'}, away:{type:'third',groups:['B','E','F','I','J']} },
+  { home:{type:'winner',group:'G'}, away:{type:'third',groups:['A','E','H','I','J']} },
+  { home:{type:'winner',group:'C'}, away:{type:'runner',group:'F'} },
+  { home:{type:'runner',group:'E'}, away:{type:'runner',group:'I'} },
+  { home:{type:'winner',group:'A'}, away:{type:'third',groups:['C','E','F','H','I']} },
+  { home:{type:'winner',group:'L'}, away:{type:'third',groups:['E','H','I','J','K']} },
+  { home:{type:'winner',group:'J'}, away:{type:'runner',group:'H'} },
+  { home:{type:'runner',group:'D'}, away:{type:'runner',group:'G'} },
+  { home:{type:'winner',group:'B'}, away:{type:'third',groups:['E','F','G','I','J']} },
+  { home:{type:'winner',group:'K'}, away:{type:'third',groups:['D','E','I','J','L']} }
+];
+
+const ROUND_NAMES = ["Round of 32","Round of 16","Quarter-finals","Semi-finals","Final"];
+
+// In-memory bracket state for the current user
+let myBracket = null;        // { groupOrder, thirds, r32, advance }
+let bracketStrikersLoaded = false;
+
+function blankBracket() {
+  const groupOrder = {};
+  GROUP_LETTERS.forEach(g => groupOrder[g] = [...BRACKET_GROUPS[g]]); // seeding order
+  return {
+    groupOrder,
+    thirds: [],        // up to 8 group letters whose 3rd-placed team advances
+    r32: {},           // slotIdx → {home, away} resolved team names (overrides)
+    advance: {}        // matchId → winning team name
+  };
+}
+
+// Position helpers
+const place = (b, g, idx) => b.groupOrder[g]?.[idx] || "";   // idx 0..3
+const winnerOf = (b,g) => place(b,g,0);
+const runnerOf = (b,g) => place(b,g,1);
+const thirdOf  = (b,g) => place(b,g,2);
+
+// Auto-assign the 8 chosen third-placed groups into the third slots via backtracking.
+// Returns map slotIdx → group letter, or null if impossible (shouldn't happen).
+function assignThirds(chosenGroups) {
+  const thirdSlots = [];
+  R32.forEach((m, i) => {
+    if (m.home.type === 'third') thirdSlots.push({ slot:i, side:'home', groups:m.home.groups });
+    if (m.away.type === 'third') thirdSlots.push({ slot:i, side:'away', groups:m.away.groups });
+  });
+  const chosen = [...chosenGroups];
+  const used = {}; // slotKey → group
+  const result = {};
+  function bt(i) {
+    if (i === chosen.length) return true;
+    const g = chosen[i];
+    for (const ts of thirdSlots) {
+      const key = ts.slot + ts.side;
+      if (!used[key] && ts.groups.includes(g)) {
+        used[key] = g;
+        result[key] = { slot: ts.slot, side: ts.side, group: g };
+        if (bt(i+1)) return true;
+        delete used[key]; delete result[key];
+      }
+    }
+    return false;
+  }
+  if (!bt(0)) return null;
+  return result; // keyed by slot+side
+}
+
+// Resolve the two teams for a given R32 slot index, honoring manual overrides.
+function resolveR32(b, idx) {
+  const override = b.r32[idx];
+  const m = R32[idx];
+  const resolveSlot = (slotDef, side) => {
+    // manual override wins
+    if (override && override[side] != null && override[side] !== "") return override[side];
+    if (slotDef.type === 'winner') return winnerOf(b, slotDef.group);
+    if (slotDef.type === 'runner') return runnerOf(b, slotDef.group);
+    if (slotDef.type === 'third') {
+      // find which chosen group maps to this slot/side
+      const asg = b._thirdAssign;
+      if (asg) {
+        const hit = asg[idx + side];
+        if (hit) return thirdOf(b, hit.group);
+      }
+      return "";
+    }
+    return "";
+  };
+  return { home: resolveSlot(m.home, 'home'), away: resolveSlot(m.away, 'away') };
+}
+
+// A label describing a slot's origin (for the seed hint)
+function slotSeedLabel(slotDef) {
+  if (slotDef.type === 'winner') return "1" + slotDef.group;
+  if (slotDef.type === 'runner') return "2" + slotDef.group;
+  if (slotDef.type === 'third')  return "3rd";
+  return "";
+}
+
+// Build the full set of rounds (arrays of matches) from current state.
+// Each round match: { id, home, away }. R32 ids are "r32-0".. ; later "r16-0", etc.
+function buildRounds(b) {
+  // Precompute third assignment
+  b._thirdAssign = b.thirds.length === 8 ? (assignThirds(b.thirds) || {}) : {};
+
+  const rounds = [];
+  // R32
+  const r0 = R32.map((m, i) => {
+    const { home, away } = resolveR32(b, i);
+    return { id:`r32-${i}`, home, away, slotIdx:i };
+  });
+  rounds.push(r0);
+
+  // Subsequent rounds derived from advance[]
+  let prev = r0;
+  let names = ["r16","qf","sf","final"];
+  let counts = [8,4,2,1];
+  for (let rIdx=0; rIdx<counts.length; rIdx++) {
+    const cur = [];
+    for (let i=0;i<counts[rIdx];i++) {
+      const a = prev[i*2], bm = prev[i*2+1];
+      const home = a ? (b.advance[a.id] || "") : "";
+      const away = bm ? (b.advance[bm.id] || "") : "";
+      cur.push({ id:`${names[rIdx]}-${i}`, home, away });
+    }
+    rounds.push(cur);
+    prev = cur;
+  }
+  return rounds;
+}
+
+// ── Rendering: group stage editors ──
+function renderBracketGroups() {
+  const wrap = document.getElementById("bracketGroups");
+  if (!wrap) return;
+  wrap.innerHTML = GROUP_LETTERS.map(g => {
+    const order = myBracket.groupOrder[g];
+    const teams = BRACKET_GROUPS[g];
+    const posLabels = ["1st","2nd","3rd","4th"];
+    const rows = [0,1,2,3].map(pos => `
+      <div class="flex items-center gap-2">
+        <span class="bkt-pos-label">${posLabels[pos]}</span>
+        <select class="bkt-group-sel" data-group="${g}" data-pos="${pos}">
+          ${teams.map(t => `<option value="${escapeHtml(t)}"${order[pos]===t?" selected":""}>${escapeHtml(t)}</option>`).join("")}
+        </select>
+      </div>`).join("");
+    return `
+      <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3">
+        <div class="display-font text-lg text-yellow-400 mb-2">Group ${g}</div>
+        ${rows}
+      </div>`;
+  }).join("");
+
+  // Wire selects: when a position changes, swap whatever team was there (keep a valid permutation)
+  wrap.querySelectorAll(".bkt-group-sel").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const g = sel.dataset.group;
+      const pos = Number(sel.dataset.pos);
+      const newTeam = sel.value;
+      const order = myBracket.groupOrder[g];
+      const oldIdx = order.indexOf(newTeam);
+      // swap: put the team that was at `pos` into where newTeam came from
+      const displaced = order[pos];
+      order[pos] = newTeam;
+      order[oldIdx] = displaced;
+      renderBracketGroups();
+      renderBracketThirds();
+      rebuildKnockoutFromGroups();
+    });
+  });
+}
+
+// ── Rendering: third-place chooser ──
+function renderBracketThirds() {
+  const wrap = document.getElementById("bracketThirds");
+  if (!wrap) return;
+  const full = myBracket.thirds.length >= 8;
+  document.getElementById("thirdCount").textContent = `(${myBracket.thirds.length}/8 selected)`;
+  wrap.innerHTML = GROUP_LETTERS.map(g => {
+    const team = thirdOf(myBracket, g);
+    const on = myBracket.thirds.includes(g);
+    return `
+      <button type="button" class="third-chip ${on?'on':'off'} ${full&&!on?'full':''}" data-group="${g}">
+        ${bracketFlagImg(team,'third-flag')}
+        <span class="truncate">${escapeHtml(team)} <span class="text-slate-500">(${g})</span></span>
+      </button>`;
+  }).join("");
+  wrap.querySelectorAll(".third-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const g = chip.dataset.group;
+      const i = myBracket.thirds.indexOf(g);
+      if (i >= 0) myBracket.thirds.splice(i,1);
+      else {
+        if (myBracket.thirds.length >= 8) { alert("You've already picked 8 third-placed teams. Deselect one first."); return; }
+        myBracket.thirds.push(g);
+      }
+      renderBracketThirds();
+      rebuildKnockoutFromGroups();
+    });
+  });
+}
+
+// Rebuild R32 overrides cleanly from current group + third picks (clears manual edits)
+function rebuildKnockoutFromGroups() {
+  myBracket.r32 = {};
+  myBracket.advance = {};
+  renderBracketKnockout();
+}
+
+// ── Rendering: knockout bracket (editable) ──
+function teamButtonHtml(team, matchId, isWinner, opts={}) {
+  if (!team) return `<div class="bkt-team bkt-empty">${opts.seed?`<span class="bkt-seed">${opts.seed}</span> `:""}TBD</div>`;
+  return `<button type="button" class="bkt-team ${isWinner?'bkt-advanced':''}" data-match="${matchId}" data-team="${escapeHtml(team)}">
+    ${bracketFlagImg(team)}
+    <span class="bkt-name">${escapeHtml(team)}</span>
+    ${opts.seed?`<span class="bkt-seed ml-auto">${opts.seed}</span>`:""}
+  </button>`;
+}
+
+function renderBracketKnockout() {
+  const host = document.getElementById("bracketKnockout");
+  if (!host) return;
+  const rounds = buildRounds(myBracket);
+
+  // Champion
+  const champ = myBracket.advance[rounds[4][0].id] || "";
+  const champWrap = document.getElementById("bracketChampionWrap");
+  if (champ) {
+    champWrap.classList.remove("hidden");
+    document.getElementById("bracketChampion").innerHTML = `${bracketFlagImg(champ)} ${escapeHtml(champ)}`;
+  } else {
+    champWrap.classList.add("hidden");
+  }
+
+  const cols = rounds.map((round, rIdx) => {
+    const matchesHtml = round.map((mt, mIdx) => {
+      const adv = myBracket.advance[mt.id] || "";
+      let homeBtn, awayBtn;
+      if (rIdx === 0) {
+        // R32 — show seed hints + allow manual override via a small select
+        const m = R32[mt.slotIdx];
+        homeBtn = teamButtonHtml(mt.home, mt.id, adv===mt.home && adv!=="", {seed: slotSeedLabel(m.home)});
+        awayBtn = teamButtonHtml(mt.away, mt.id, adv===mt.away && adv!=="", {seed: slotSeedLabel(m.away)});
+      } else {
+        homeBtn = teamButtonHtml(mt.home, mt.id, adv===mt.home && adv!=="");
+        awayBtn = teamButtonHtml(mt.away, mt.id, adv===mt.away && adv!=="");
+      }
+      // Round of 32 manual override control
+      let editControl = "";
+      if (rIdx === 0) {
+        editControl = `<button type="button" class="bkt-r32-edit" data-edit-slot="${mt.slotIdx}">✎ change teams</button>`;
+      }
+      return `<div class="bkt-match">${homeBtn}${awayBtn}${editControl}</div>`;
+    }).join("");
+    return `<div class="bkt-round">
+      <div class="bkt-round-title">${ROUND_NAMES[rIdx]}</div>
+      ${matchesHtml}
+    </div>`;
+  }).join("");
+
+  host.innerHTML = `<div class="bkt-cols">${cols}</div>`;
+
+  // Click a team to advance them
+  host.querySelectorAll(".bkt-team[data-team]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const matchId = btn.dataset.match;
+      const team = btn.dataset.team;
+      if (!team) return;
+      // toggle: clicking the already-advanced team clears it
+      if (myBracket.advance[matchId] === team) {
+        clearDownstream(matchId);
+      } else {
+        myBracket.advance[matchId] = team;
+        // clear any downstream picks that depended on the old winner
+        clearDownstream(matchId, true);
+      }
+      renderBracketKnockout();
+    });
+  });
+
+  // Manual R32 override
+  host.querySelectorAll("[data-edit-slot]").forEach(btn => {
+    btn.addEventListener("click", () => openR32Editor(Number(btn.dataset.editSlot)));
+  });
+}
+
+// When a winner changes, downstream matches may hold a now-invalid team. Clear them.
+function clearDownstream(matchId, keepCurrent=false) {
+  // Map of which match feeds which downstream slot
+  // r32-i → r16-floor(i/2), r16-i → qf-floor(i/2), etc.
+  const order = ["r32","r16","qf","sf","final"];
+  function childOf(id) {
+    const [r, nStr] = id.split("-"); const n = Number(nStr);
+    const ri = order.indexOf(r);
+    if (ri < 0 || ri >= order.length-1) return null;
+    return `${order[ri+1]}-${Math.floor(n/2)}`;
+  }
+  if (!keepCurrent) delete myBracket.advance[matchId];
+  // Walk downstream clearing advances that are no longer valid
+  let cur = matchId;
+  while (true) {
+    const child = childOf(cur);
+    if (!child) break;
+    // The winner currently stored at child might be the team we just removed/changed.
+    // Simplest correct behavior: clear the child's advance (and continue) because its
+    // participants may have changed.
+    delete myBracket.advance[child];
+    cur = child;
+  }
+}
+
+// R32 manual override editor (modal-ish via prompt of selectable teams)
+function openR32Editor(slotIdx) {
+  const m = R32[slotIdx];
+  // Build candidate lists for each side
+  const homeCands = slotCandidates(m.home);
+  const awayCands = slotCandidates(m.away);
+  const cur = resolveR32(myBracket, slotIdx);
+
+  const overlay = document.createElement("div");
+  overlay.className = "fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4";
+  overlay.innerHTML = `
+    <div class="glass rounded-2xl p-6 max-w-md w-full border border-yellow-700/40">
+      <h3 class="display-font text-2xl text-yellow-400 mb-1">Edit Round-of-32 Match</h3>
+      <p class="text-slate-400 text-xs mb-4">Override the two teams in this slot if the real qualifying outcome differs from your group picks.</p>
+      <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Home (${slotSeedLabel(m.home)})</label>
+      <select id="r32EditHome" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 mb-3 text-white text-sm">
+        ${homeCands.map(t=>`<option value="${escapeHtml(t)}"${t===cur.home?' selected':''}>${escapeHtml(t)}</option>`).join("")}
+      </select>
+      <label class="block text-xs text-slate-400 uppercase tracking-widest mb-1.5">Away (${slotSeedLabel(m.away)})</label>
+      <select id="r32EditAway" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 mb-5 text-white text-sm">
+        ${awayCands.map(t=>`<option value="${escapeHtml(t)}"${t===cur.away?' selected':''}>${escapeHtml(t)}</option>`).join("")}
+      </select>
+      <div class="flex gap-3">
+        <button id="r32EditCancel" class="flex-1 bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm transition">Cancel</button>
+        <button id="r32EditSave" class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl font-bold text-sm transition">Apply</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => document.body.removeChild(overlay);
+  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+  overlay.querySelector("#r32EditCancel").addEventListener("click", close);
+  overlay.querySelector("#r32EditSave").addEventListener("click", () => {
+    const h = overlay.querySelector("#r32EditHome").value;
+    const a = overlay.querySelector("#r32EditAway").value;
+    myBracket.r32[slotIdx] = { home:h, away:a };
+    // changing R32 participants invalidates this match's advance + downstream
+    delete myBracket.advance[`r32-${slotIdx}`];
+    clearDownstream(`r32-${slotIdx}`);
+    close();
+    renderBracketKnockout();
+  });
+}
+
+// All plausible teams for a slot (used in the override editor)
+function slotCandidates(slotDef) {
+  const all = new Set();
+  if (slotDef.type === 'winner') GROUP_LETTERS.forEach(g => all.add(winnerOf(myBracket,g)));
+  else if (slotDef.type === 'runner') GROUP_LETTERS.forEach(g => all.add(runnerOf(myBracket,g)));
+  else if (slotDef.type === 'third') GROUP_LETTERS.forEach(g => { const t=thirdOf(myBracket,g); if(t) all.add(t); });
+  // Always allow every qualified team as a fallback so the user can set anything
+  Object.values(BRACKET_GROUPS).flat().forEach(t => all.add(t));
+  return Array.from(all).filter(Boolean).sort((a,b)=>a.localeCompare(b));
+}
+
+// ── Persistence ──
+async function getMyBracket() {
+  if (!currentUser) return null;
+  try {
+    const d = await getDoc(doc(db,"bracketPicks",currentUser.uid));
+    return d.exists() ? d.data() : null;
+  } catch(e){ console.warn("getMyBracket:", e.message); return null; }
+}
+async function getAllBrackets() {
+  try {
+    const snap = await getDocs(collection(db,"bracketPicks"));
+    const obj = {};
+    snap.forEach(d => obj[d.id] = d.data());
+    return obj;
+  } catch(e){ console.warn("getAllBrackets:", e.message); return {}; }
+}
+async function saveMyBracket() {
+  if (!currentUser) throw new Error("Not signed in");
+  let name = currentUser.displayName || currentUser.email.split("@")[0];
+  try {
+    const ud = await getDoc(doc(db,"users",currentUser.uid));
+    if (ud.exists() && ud.data().displayName) name = ud.data().displayName;
+  } catch(_){}
+  // Strip the transient _thirdAssign before persisting
+  const { groupOrder, thirds, r32, advance } = myBracket;
+  await setDoc(doc(db,"bracketPicks",currentUser.uid), {
+    user: name, uid: currentUser.uid,
+    groupOrder, thirds, r32, advance,
+    updatedAt: Date.now()
+  });
+}
+
+// ── Read-only view of another player's bracket ──
+function renderBracketReadonly(hostId, b) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const rounds = buildRounds(b);
+  const cols = rounds.map((round, rIdx) => {
+    const matchesHtml = round.map(mt => {
+      const adv = b.advance[mt.id] || "";
+      const teamRO = (team) => {
+        if (!team) return `<div class="bkt-team bkt-empty">TBD</div>`;
+        return `<div class="bkt-team ${adv===team&&adv!==""?'bkt-advanced':''}">
+          ${bracketFlagImg(team)}<span class="bkt-name">${escapeHtml(team)}</span></div>`;
+      };
+      return `<div class="bkt-match">${teamRO(mt.home)}${teamRO(mt.away)}</div>`;
+    }).join("");
+    return `<div class="bkt-round"><div class="bkt-round-title">${ROUND_NAMES[rIdx]}</div>${matchesHtml}</div>`;
+  }).join("");
+  host.innerHTML = `<div class="bkt-cols">${cols}</div>`;
+  return rounds;
+}
+
+async function populateBracketPlayerFilter() {
+  const filter = document.getElementById("bracketPlayerFilter");
+  if (!filter) return;
+  const currentVal = filter.value || "__me";
+  const all = await getAllBrackets();
+  const players = Object.entries(all)
+    .map(([uid,d]) => ({ uid, name: d.user || "Unknown" }))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+  let html = `<option value="__me">My bracket (edit mode)</option>`;
+  if (players.length) {
+    html += `<option disabled>──── Other players ────</option>`;
+    html += players.filter(p => !currentUser || p.uid !== currentUser.uid)
+      .map(p => `<option value="${escapeHtml(p.uid)}">${escapeHtml(p.name)}</option>`).join("");
+  }
+  filter.innerHTML = html;
+  filter.value = currentVal;
+}
+
+// Normalize a loaded bracket doc into full shape
+function hydrateBracket(d) {
+  const b = blankBracket();
+  if (d) {
+    if (d.groupOrder) GROUP_LETTERS.forEach(g => { if (Array.isArray(d.groupOrder[g]) && d.groupOrder[g].length===4) b.groupOrder[g] = [...d.groupOrder[g]]; });
+    if (Array.isArray(d.thirds)) b.thirds = d.thirds.filter(g => GROUP_LETTERS.includes(g)).slice(0,8);
+    if (d.r32 && typeof d.r32 === 'object') b.r32 = { ...d.r32 };
+    if (d.advance && typeof d.advance === 'object') b.advance = { ...d.advance };
+  }
+  return b;
+}
+
+// ── Main entry ──
+async function renderBracketTab() {
+  await populateBracketPlayerFilter();
+  const filter = document.getElementById("bracketPlayerFilter");
+  const choice = filter.value || "__me";
+
+  const editEl  = document.getElementById("bracketEditMode");
+  const viewEl  = document.getElementById("bracketViewMode");
+  const emptyEl = document.getElementById("bracketViewEmpty");
+
+  if (choice === "__me") {
+    viewEl.classList.add("hidden"); emptyEl.classList.add("hidden");
+    editEl.classList.remove("hidden");
+    if (!myBracket) {
+      const mine = await getMyBracket();
+      myBracket = hydrateBracket(mine);
+    }
+    renderBracketGroups();
+    renderBracketThirds();
+    renderBracketKnockout();
+    const mineDoc = await getMyBracket();
+    document.getElementById("bracketSaveStatus").textContent =
+      mineDoc ? `Last saved ${new Date(mineDoc.updatedAt||Date.now()).toLocaleString()}` : "Your bracket saves only when you press Save.";
+  } else {
+    editEl.classList.add("hidden");
+    const all = await getAllBrackets();
+    const d = all[choice];
+    if (!d) { viewEl.classList.add("hidden"); emptyEl.classList.remove("hidden"); return; }
+    emptyEl.classList.add("hidden"); viewEl.classList.remove("hidden");
+    const b = hydrateBracket(d);
+    document.getElementById("bracketViewSubtitle").textContent = `Viewing bracket for: ${d.user || "—"}`;
+    const rounds = renderBracketReadonly("bracketViewKnockout", b);
+    const champ = b.advance[rounds[4][0].id] || "";
+    const cw = document.getElementById("bracketViewChampionWrap");
+    if (champ) { cw.classList.remove("hidden"); document.getElementById("bracketViewChampion").innerHTML = `${bracketFlagImg(champ)} ${escapeHtml(champ)}`; }
+    else cw.classList.add("hidden");
+  }
+}
+
+function setupBracketTab() {
+  document.getElementById("bracketPlayerFilter").addEventListener("change", renderBracketTab);
+
+  document.getElementById("saveBracketBtn").addEventListener("click", async () => {
+    if (!currentUser) { alert("Please sign in first."); return; }
+    if (myBracket.thirds.length !== 8) {
+      if (!confirm(`You've selected ${myBracket.thirds.length} of 8 third-placed teams. Save anyway? The Round of 32 won't be complete until you pick 8.`)) return;
+    }
+    const btn = document.getElementById("saveBracketBtn");
+    const orig = btn.textContent; btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      await saveMyBracket();
+      btn.textContent = "Saved ✓";
+      setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 1500);
+      document.getElementById("bracketSaveStatus").textContent = `Last saved ${new Date().toLocaleString()}`;
+      populateBracketPlayerFilter();
+    } catch(e) {
+      alert("Couldn't save bracket: " + e.message);
+      btn.textContent = orig; btn.disabled = false;
+    }
+  });
+
+  document.getElementById("bracketAutoFill").addEventListener("click", () => {
+    GROUP_LETTERS.forEach(g => myBracket.groupOrder[g] = [...BRACKET_GROUPS[g]]);
+    renderBracketGroups(); renderBracketThirds(); rebuildKnockoutFromGroups();
+  });
+
+  document.getElementById("bracketRebuild").addEventListener("click", () => {
+    rebuildKnockoutFromGroups();
+  });
+}
+setupBracketTab();
+
+function refreshBracketIfActive() {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "bracketTab") {
+    // Only refresh the player filter list / read-only view, never clobber my unsaved edits
+    const choice = document.getElementById("bracketPlayerFilter")?.value || "__me";
+    if (choice !== "__me") renderBracketTab();
+    else populateBracketPlayerFilter();
+  }
+}
+
+
+
 
 // In-memory current selections (mirror Firestore once loaded)
 let myTournamentPicks = {
@@ -3451,6 +4192,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.getElementById(btn.dataset.tab).classList.remove("hidden");
     if (btn.dataset.tab==="predictionsTab") renderAllPicks();
     if (btn.dataset.tab==="tournamentTab")  renderTournamentTab();
+    if (btn.dataset.tab==="bracketTab")     renderBracketTab();
     if (btn.dataset.tab==="resultsTab")     renderResultsTab();
     if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
     if (btn.dataset.tab==="reportsTab")     renderReportsTab();
@@ -3483,6 +4225,14 @@ try {
     err => console.warn("settings snapshot:", err.message)
   );
 } catch(e) { console.warn("settings listener not attached:", e.message); }
+
+// Bracket picks — non-scored, but keep the player filter / read-only views fresh
+try {
+  onSnapshot(collection(db,"bracketPicks"),
+    () => { refreshBracketIfActive(); },
+    err => console.warn("bracketPicks snapshot:", err.message)
+  );
+} catch(e) { console.warn("bracketPicks listener not attached:", e.message); }
 
 function renderAllPicksIfActive() {
   const active = document.querySelector(".tab-content:not(.hidden)");
@@ -3532,9 +4282,9 @@ document.getElementById("resetPredictionsBtn").addEventListener("click", () =>
 );
 document.getElementById("resetAllBtn").addEventListener("click", () =>
   showConfirm("Reset Entire Game",
-    "Permanently deletes ALL matches, results, predictions, and tournament picks. Cannot be undone.",
+    "Permanently deletes ALL matches, results, predictions, tournament picks, and bracket predictions. Cannot be undone.",
     async () => {
-      await Promise.all(["matches","results","predictions","tournamentPicks"].map(delCol));
+      await Promise.all(["matches","results","predictions","tournamentPicks","bracketPicks"].map(delCol));
       try { await deleteDoc(doc(db,"settings","tournamentResult")); } catch(_){}
       renderMatches(); renderResultsTab(); calculateLeaderboard();
     })
