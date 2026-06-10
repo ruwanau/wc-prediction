@@ -670,44 +670,61 @@
     </div>
 
     <div class="flex items-center gap-3 flex-wrap justify-end">
-      <nav class="flex gap-3 flex-wrap items-center">
-        <!-- Group: Play -->
-        <div class="nav-group">
-          <span class="nav-group-label">Play</span>
-          <div class="nav-group-btns">
-            <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm" data-tab="predictTab">⚽ Predict</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="predictionsTab">👀 Games</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Cup</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="bracketTab">🗺️ Bracket</button>
-          </div>
+      <nav class="w-full md:w-auto">
+        <!-- Mobile quick-access row: Predict + Games + More (hidden on md+) -->
+        <div class="flex md:hidden items-center gap-2 w-full">
+          <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm flex-1" data-tab="predictTab">⚽ Predict</button>
+          <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm flex-1" data-tab="predictionsTab">👀 Games</button>
+          <button id="moreMenuBtn" type="button"
+            class="px-3.5 py-2 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-200 text-sm font-medium flex items-center gap-1.5 whitespace-nowrap">
+            More <span id="moreMenuCaret" class="transition-transform">▾</span>
+          </button>
         </div>
 
-        <!-- Group: Live -->
-        <div class="nav-group">
-          <span class="nav-group-label">Live</span>
-          <div class="nav-group-btns">
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
+        <!-- Full grouped menu.
+             Desktop: always shown inline (md:flex).
+             Mobile: hidden until "More" is tapped (#moreMenuPanel.open). -->
+        <div id="moreMenuPanel"
+          class="hidden md:flex gap-3 flex-wrap items-center mt-3 md:mt-0
+                 flex-col md:flex-row items-stretch md:items-center">
+          <!-- Group: Play -->
+          <div class="nav-group">
+            <span class="nav-group-label">Play</span>
+            <div class="nav-group-btns">
+              <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm hidden md:inline-block" data-tab="predictTab">⚽ Predict</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm hidden md:inline-block" data-tab="predictionsTab">👀 Games</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Cup</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="bracketTab">🗺️ Bracket</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Group: Info -->
-        <div class="nav-group">
-          <span class="nav-group-label">Info</span>
-          <div class="nav-group-btns">
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="reportsTab">📈 Reports</button>
-            <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
+          <!-- Group: Live -->
+          <div class="nav-group">
+            <span class="nav-group-label">Live</span>
+            <div class="nav-group-btns">
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="resultsTab">📊 Results</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="standingsTab">📋 Standings</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="knockoutTab">🏆 Knockout</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Group: Admin -->
-        <div class="nav-group">
-          <span class="nav-group-label">&nbsp;</span>
-          <div class="nav-group-btns">
-            <button id="navInstallBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-300 text-sm" type="button">📲 Install</button>
-            <button id="adminTabBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
+          <!-- Group: Info -->
+          <div class="nav-group">
+            <span class="nav-group-label">Info</span>
+            <div class="nav-group-btns">
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="reportsTab">📈 Reports</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
+            </div>
+          </div>
+
+          <!-- Group: Admin -->
+          <div class="nav-group">
+            <span class="nav-group-label">&nbsp;</span>
+            <div class="nav-group-btns">
+              <button id="navInstallBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-300 text-sm" type="button">📲 Install</button>
+              <button id="adminTabBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
+            </div>
           </div>
         </div>
       </nav>
@@ -4186,19 +4203,70 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     // Skip buttons that aren't real tab switches (e.g. the Install button)
     if (!btn.dataset.tab) return;
+    const tab = btn.dataset.tab;
+    // Reset all tab buttons, then activate every button that targets this tab
+    // (there can be duplicates: mobile quick-access + desktop grouped menu).
     document.querySelectorAll(".tab-btn").forEach(b => { b.classList.remove("tab-active"); b.classList.add("bg-slate-800"); });
-    btn.classList.add("tab-active"); btn.classList.remove("bg-slate-800");
+    document.querySelectorAll(`.tab-btn[data-tab="${tab}"]`).forEach(b => { b.classList.add("tab-active"); b.classList.remove("bg-slate-800"); });
     document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
-    document.getElementById(btn.dataset.tab).classList.remove("hidden");
-    if (btn.dataset.tab==="predictionsTab") renderAllPicks();
-    if (btn.dataset.tab==="tournamentTab")  renderTournamentTab();
-    if (btn.dataset.tab==="bracketTab")     renderBracketTab();
-    if (btn.dataset.tab==="resultsTab")     renderResultsTab();
-    if (btn.dataset.tab==="leaderboardTab") calculateLeaderboard();
-    if (btn.dataset.tab==="reportsTab")     renderReportsTab();
-    if (btn.dataset.tab==="adminTab")       { if(adminUnlocked) { renderMatches(); setupAdminTournamentControls(); } }
+    document.getElementById(tab).classList.remove("hidden");
+    // Collapse the mobile "More" menu after a choice is made
+    closeMoreMenu();
+    if (tab==="predictionsTab") renderAllPicks();
+    if (tab==="tournamentTab")  renderTournamentTab();
+    if (tab==="bracketTab")     renderBracketTab();
+    if (tab==="resultsTab")     renderResultsTab();
+    if (tab==="leaderboardTab") calculateLeaderboard();
+    if (tab==="reportsTab")     renderReportsTab();
+    if (tab==="adminTab")       { if(adminUnlocked) { renderMatches(); setupAdminTournamentControls(); } }
   });
 });
+
+// ── MOBILE "MORE" MENU TOGGLE ─────────────────────────────────
+function openMoreMenu() {
+  const panel = document.getElementById("moreMenuPanel");
+  const caret = document.getElementById("moreMenuCaret");
+  if (!panel) return;
+  panel.classList.remove("hidden");
+  panel.classList.add("flex");
+  if (caret) caret.style.transform = "rotate(180deg)";
+}
+function closeMoreMenu() {
+  const panel = document.getElementById("moreMenuPanel");
+  const caret = document.getElementById("moreMenuCaret");
+  if (!panel) return;
+  // Only collapse on mobile widths; on md+ the panel is always shown via CSS.
+  if (window.matchMedia("(min-width: 768px)").matches) return;
+  panel.classList.add("hidden");
+  panel.classList.remove("flex");
+  if (caret) caret.style.transform = "rotate(0deg)";
+}
+(function setupMoreMenu(){
+  const moreBtn = document.getElementById("moreMenuBtn");
+  if (moreBtn) {
+    moreBtn.addEventListener("click", () => {
+      const panel = document.getElementById("moreMenuPanel");
+      const isOpen = panel && !panel.classList.contains("hidden");
+      if (isOpen) closeMoreMenu(); else openMoreMenu();
+    });
+  }
+  // Keep the panel visible/correct when crossing the mobile↔desktop breakpoint
+  window.matchMedia("(min-width: 768px)").addEventListener("change", e => {
+    const panel = document.getElementById("moreMenuPanel");
+    const caret = document.getElementById("moreMenuCaret");
+    if (!panel) return;
+    if (e.matches) {
+      // desktop: CSS (md:flex) shows it; clear any inline mobile state
+      panel.classList.remove("hidden");
+      if (caret) caret.style.transform = "rotate(0deg)";
+    } else {
+      // mobile: start collapsed
+      panel.classList.add("hidden");
+      panel.classList.remove("flex");
+      if (caret) caret.style.transform = "rotate(0deg)";
+    }
+  });
+})();
 
 // ── AUTO-RERENDER ─────────────────────────────────────────────
 setInterval(() => {
