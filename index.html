@@ -726,18 +726,18 @@
               <button id="adminTabBtn" class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400 text-sm" data-tab="adminTab">🔒 Admin</button>
             </div>
           </div>
+
+          <!-- User chip — lives in the menu so it collapses into "More" on mobile -->
+          <div class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 md:ml-1">
+            <div id="hdrAvatar" class="user-avatar">?</div>
+            <div class="min-w-0 flex-1">
+              <div id="hdrName"  class="text-sm font-bold leading-none truncate md:max-w-[8rem]">—</div>
+              <div id="hdrEmail" class="text-xs text-slate-500 leading-none mt-0.5 truncate md:max-w-[8rem]">—</div>
+            </div>
+            <button id="signOutBtn" class="ml-1 text-xs text-slate-400 hover:text-red-400 transition font-medium whitespace-nowrap">Sign out</button>
+          </div>
         </div>
       </nav>
-
-      <!-- User chip -->
-      <div class="flex items-center gap-2 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2">
-        <div id="hdrAvatar" class="user-avatar">?</div>
-        <div class="min-w-0">
-          <div id="hdrName"  class="text-sm font-bold leading-none truncate max-w-[8rem]">—</div>
-          <div id="hdrEmail" class="text-xs text-slate-500 leading-none mt-0.5 truncate max-w-[8rem]">—</div>
-        </div>
-        <button id="signOutBtn" class="ml-1 text-xs text-slate-400 hover:text-red-400 transition font-medium whitespace-nowrap">Sign out</button>
-      </div>
     </div>
 
   </div>
