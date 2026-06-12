@@ -671,12 +671,13 @@
 
     <div class="flex items-center gap-3 flex-wrap justify-end">
       <nav class="w-full md:w-auto">
-        <!-- Mobile quick-access row: Predict + Games + More (hidden on md+) -->
-        <div class="flex md:hidden items-center gap-2 w-full">
-          <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm flex-1" data-tab="predictTab">⚽ Predict</button>
-          <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm flex-1" data-tab="predictionsTab">👀 Games</button>
+        <!-- Mobile quick-access row: Predict + Games + Leaderboard + More (hidden on md+) -->
+        <div class="flex md:hidden items-center gap-2 w-full flex-wrap">
+          <button class="tab-btn tab-active px-3 py-2 rounded-lg text-sm flex-1 min-w-[5rem]" data-tab="predictTab">⚽ Predict</button>
+          <button class="tab-btn px-3 py-2 rounded-lg bg-slate-800 text-sm flex-1 min-w-[5rem]" data-tab="predictionsTab">👀 Games</button>
+          <button class="tab-btn px-3 py-2 rounded-lg bg-slate-800 text-sm flex-1 min-w-[5rem]" data-tab="leaderboardTab">🥇 Ranks</button>
           <button id="moreMenuBtn" type="button"
-            class="px-3.5 py-2 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-200 text-sm font-medium flex items-center gap-1.5 whitespace-nowrap">
+            class="px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-200 text-sm font-medium flex items-center gap-1.5 whitespace-nowrap">
             More <span id="moreMenuCaret" class="transition-transform">▾</span>
           </button>
         </div>
@@ -693,6 +694,7 @@
             <div class="nav-group-btns">
               <button class="tab-btn tab-active px-3.5 py-2 rounded-lg text-sm hidden md:inline-block" data-tab="predictTab">⚽ Predict</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm hidden md:inline-block" data-tab="predictionsTab">👀 Games</button>
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm hidden md:inline-block" data-tab="leaderboardTab">🥇 Leaderboard</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="tournamentTab">🏆 Cup</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="bracketTab">🗺️ Bracket</button>
             </div>
@@ -712,7 +714,6 @@
           <div class="nav-group">
             <span class="nav-group-label">Info</span>
             <div class="nav-group-btns">
-              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="leaderboardTab">🥇 Leaderboard</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="reportsTab">📈 Reports</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
             </div>
@@ -813,7 +814,7 @@
 
     <div class="glass rounded-2xl p-6">
       <h2 class="display-font text-3xl text-yellow-400 mb-1">Tournament Picks</h2>
-      <p class="text-slate-400 text-sm">Pick the cup winner and Golden Boot top scorer · Locks at first kickoff</p>
+      <p class="text-slate-400 text-sm">Pick the cup winner and Golden Boot top scorer · Locks 29 Jun 2026, 5:00 AM AEST</p>
 
       <div class="flex flex-wrap gap-3 mt-4 text-xs">
         <span class="badge-knockout rounded-lg px-3 py-1.5 font-medium">🥇 Champion 1st choice: +10 pts</span>
@@ -828,7 +829,7 @@
       <span class="text-2xl">🔒</span>
       <div>
         <div class="font-bold text-red-300">Tournament picks locked</div>
-        <div class="text-sm text-red-400">The first match has kicked off. Your champion and top-scorer picks can no longer be changed.</div>
+        <div class="text-sm text-red-400">The lock deadline (29 Jun 2026, 5:00 AM AEST) has passed. Your champion and top-scorer picks can no longer be changed.</div>
       </div>
     </div>
 
@@ -842,7 +843,7 @@
         </select>
       </div>
       <p class="text-xs text-slate-500 mt-2">
-        Other players' picks become visible after the first kickoff.
+        Other players' picks become visible after the lock deadline (29 Jun 2026, 5:00 AM AEST).
       </p>
     </div>
 
@@ -1188,7 +1189,7 @@
 
       <div class="mt-6 pt-6 border-t border-white/10">
         <h3 class="display-font text-2xl text-yellow-400 mb-4">Tournament Bonuses</h3>
-        <p class="text-slate-400 text-sm mb-4">Long-shot picks that earn big bonus points if you call them right. <strong class="text-yellow-300">Locked when the first match kicks off — no changes after that.</strong></p>
+        <p class="text-slate-400 text-sm mb-4">Long-shot picks that earn big bonus points if you call them right. <strong class="text-yellow-300">Locked on 29 Jun 2026, 5:00 AM AEST — no changes after that.</strong></p>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="bg-slate-900/60 rounded-xl p-4 border border-yellow-500/30">
             <div class="text-2xl mb-2">🥇</div>
@@ -1353,10 +1354,14 @@
         <h3 class="display-font text-xl text-yellow-400 mb-1">Add Match</h3>
         <p class="text-slate-500 text-xs mb-4">Enter kickoff in Australian Eastern Time (AEST/AEDT). Visitors see it in their local time.</p>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <input type="text" id="homeTeam" placeholder="Home Team"
-            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
-          <input type="text" id="awayTeam" placeholder="Away Team"
-            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white placeholder-slate-600" />
+          <select id="homeTeam"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="">— Home Team —</option>
+          </select>
+          <select id="awayTeam"
+            class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 transition text-white">
+            <option value="">— Away Team —</option>
+          </select>
           <div>
             <input type="datetime-local" id="kickoff"
               class="bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-yellow-500 transition text-white" />
@@ -1758,7 +1763,13 @@ function getOutcome(h,a) { return h>a?"HOME":a>h?"AWAY":"DRAW"; }
 async function getMatches() {
   const snap = await getDocs(collection(db,"matches"));
   const arr  = [];
-  snap.forEach(d => arr.push({id:d.id,...d.data()}));
+  snap.forEach(d => {
+    const data = d.data();
+    // Normalise team names to the standard spelling (e.g. Korea Republic → South Korea)
+    if (data.home) data.home = canonicalTeam(data.home);
+    if (data.away) data.away = canonicalTeam(data.away);
+    arr.push({id:d.id,...data});
+  });
   arr.sort((a,b) => (b.kickoffUtcMs||0)-(a.kickoffUtcMs||0));
   return arr;
 }
@@ -1796,6 +1807,56 @@ const DEFAULT_NATIONS = [
   "Scotland","Senegal","Serbia","South Africa","South Korea","Spain","Sweden",
   "Switzerland","Tunisia","United States","Uruguay","Uzbekistan","Wales"
 ];
+
+// ── OFFICIAL 2026 MATCH COUNTRIES (admin Add-Match dropdown) ──
+// The 48 qualified teams, using the exact display spelling we standardise on.
+const MATCH_COUNTRIES = [
+  "Mexico","Czechia","South Korea","South Africa","Switzerland","Canada",
+  "Bosnia and Herzegovina","Qatar","Brazil","Morocco","Scotland","Haiti",
+  "Türkiye","Paraguay","United States","Australia","Germany","Ivory Coast",
+  "Ecuador","Curaçao","Japan","Netherlands","Sweden","Tunisia","Belgium",
+  "Egypt","Iran","New Zealand","Spain","Uruguay","Cape Verde","Saudi Arabia",
+  "France","Norway","Senegal","Iraq","Argentina","Austria","Algeria","Jordan",
+  "Portugal","Colombia","DR Congo","Uzbekistan","England","Croatia","Ghana","Panama"
+];
+const MATCH_COUNTRIES_SORTED = [...MATCH_COUNTRIES].sort((a,b)=>a.localeCompare(b));
+
+// Map legacy / alternate names to our standard spelling so existing matches
+// and results display consistently with the dropdown values.
+const TEAM_NAME_ALIASES = {
+  "korea republic":"South Korea",
+  "south korea":"South Korea",
+  "republic of korea":"South Korea",
+  "bosnia":"Bosnia and Herzegovina",
+  "bosnia & herzegovina":"Bosnia and Herzegovina",
+  "bosnia and herzegovina":"Bosnia and Herzegovina",
+  "usa":"United States",
+  "u.s.a.":"United States",
+  "united states of america":"United States",
+  "united states":"United States",
+  "us":"United States",
+  "turkey":"Türkiye",
+  "turkiye":"Türkiye",
+  "türkiye":"Türkiye",
+  "ivory coast":"Ivory Coast",
+  "cote d'ivoire":"Ivory Coast",
+  "côte d'ivoire":"Ivory Coast",
+  "czech republic":"Czechia",
+  "czechia":"Czechia",
+  "dr congo":"DR Congo",
+  "democratic republic of congo":"DR Congo",
+  "curacao":"Curaçao",
+  "curaçao":"Curaçao",
+  "cape verde":"Cape Verde",
+  "cabo verde":"Cape Verde"
+};
+
+// Return the standardised display name for a team string.
+function canonicalTeam(name) {
+  if (!name) return name;
+  const key = name.trim().toLowerCase();
+  return TEAM_NAME_ALIASES[key] || name.trim();
+}
 
 // Default striker / attacker shortlist — admin can edit anytime.
 // Format: "Name | Country | Position"
@@ -1950,13 +2011,13 @@ async function saveMyTournamentPicks(picks) {
   });
 }
 
-// Tournament picks lock at the FIRST match kickoff, regardless of which match
+// Tournament picks lock at a fixed deadline: 29 June 2026, 5:00 AM AEST.
+const TOURNAMENT_LOCK_AEST = "2026-06-29T05:00";
+function tournamentLockMs() {
+  return aestLocalToUtcMs(TOURNAMENT_LOCK_AEST);
+}
 async function tournamentPicksLocked() {
-  const matches = await getMatches();
-  if (!matches.length) return false;
-  const firstKickoff = Math.min(...matches.map(m => m.kickoffUtcMs || Infinity));
-  if (!isFinite(firstKickoff)) return false;
-  return Date.now() >= firstKickoff;
+  return Date.now() >= tournamentLockMs();
 }
 
 // Build a sorted unique nation list from matches + defaults
@@ -1990,7 +2051,8 @@ const NATION_ISO = {
   "georgia":"ge","guinea":"gn","denmark":"dk","turkey":"tr","türkiye":"tr",
   "ukraine":"ua","greece":"gr","czechia":"cz","czech republic":"cz","romania":"ro",
   "hungary":"hu","algeria":"dz","cameroon":"cm","mali":"ml","costa rica":"cr",
-  "chile":"cl","bolivia":"bo","venezuela":"ve","honduras":"hn"
+  "chile":"cl","bolivia":"bo","venezuela":"ve","honduras":"hn",
+  "bosnia and herzegovina":"ba","iraq":"iq"
 };
 
 // Returns an HTML <img> tag for the flag, or an empty string for unknown nations.
@@ -2219,12 +2281,27 @@ async function renderMatches() {
 }
 
 // ── ADD MATCH ─────────────────────────────────────────────────
+// Populate the admin Add-Match country dropdowns (alphabetical)
+function populateMatchCountryDropdowns() {
+  ["homeTeam","awayTeam"].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const label = id === "homeTeam" ? "— Home Team —" : "— Away Team —";
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${label}</option>` +
+      MATCH_COUNTRIES_SORTED.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    if (cur) sel.value = cur;
+  });
+}
+populateMatchCountryDropdowns();
+
 document.getElementById("addMatchBtn").addEventListener("click", async () => {
-  const home    = document.getElementById("homeTeam").value.trim();
-  const away    = document.getElementById("awayTeam").value.trim();
+  const home    = canonicalTeam(document.getElementById("homeTeam").value.trim());
+  const away    = canonicalTeam(document.getElementById("awayTeam").value.trim());
   const kickoff = document.getElementById("kickoff").value;
   const stage   = document.getElementById("stage").value;
-  if (!home||!away||!kickoff) { alert("Please fill all fields."); return; }
+  if (!home||!away||!kickoff) { alert("Please select both teams and a kickoff time."); return; }
+  if (home === away) { alert("Home and away teams must be different."); return; }
   const kickoffUtcMs = aestLocalToUtcMs(kickoff);
   await addDoc(collection(db,"matches"),{home,away,stage,kickoffUtcMs,kickoffAEST:kickoff,createdAt:Date.now()});
   document.getElementById("homeTeam").value = "";
