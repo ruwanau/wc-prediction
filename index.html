@@ -2446,13 +2446,23 @@ async function fetchOddsApiEvents() {
     return oddsApiCache.events;
   }
 
-  const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds`
-            + `?apiKey=${encodeURIComponent(ODDS_API_KEY)}`
-            + `&regions=${encodeURIComponent(ODDS_API_REGION)}`
-            + `&markets=h2h&oddsFormat=decimal`;
-
+  // The Odds API doesn't send CORS headers, so browsers can't call it directly.
+  // We proxy through the Cloudflare Worker (same one used for AI previews),
+  // which forwards the request and returns the JSON with permissive CORS headers.
   try {
-    const res = await fetch(url);
+    const res = await fetch(ANTHROPIC_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        _odds: {
+          apiKey: ODDS_API_KEY,
+          regions: ODDS_API_REGION,
+          markets: "h2h",
+          oddsFormat: "decimal",
+          sport: "soccer_fifa_world_cup"
+        }
+      })
+    });
     if (res.status === 401 || res.status === 403) {
       console.warn("[Odds API] Invalid API key — disabling for this session.");
       oddsApiDisabled = true;
