@@ -2329,8 +2329,14 @@ async function calculateLeaderboard() {
       const act  = results[m.id];
       if (!pred || act?.home === undefined) return;
       const mul = m.stage === "Knockout" ? 1.5 : 1;
-      if (pred.home === act.home && pred.away === act.away) { matchPts += 3*mul; exact++; return; }
-      if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) { matchPts += 1*mul; outcome++; }
+      const isExact   = pred.home === act.home && pred.away === act.away;
+      const isOutcome = getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away);
+      // An exact score is also a correct result, so count it in both columns.
+      // Points award only the higher tier (3 for exact, else 1), never both.
+      if (isExact)   exact++;
+      if (isOutcome) outcome++;   // true whenever exact is true, plus result-only hits
+      if (isExact)        matchPts += 3*mul;
+      else if (isOutcome) matchPts += 1*mul;
     });
 
     // Tournament bonus points (only awarded when admin has entered the actual result)
@@ -2827,7 +2833,9 @@ async function renderAllPicks() {
     const rowsWrap = document.createElement("div");
     rowsWrap.className = "divide-y divide-white/5";
 
-    players.forEach(p => {
+    // Build a row descriptor per player first, capturing the points they earned
+    // for THIS match, so we can sort by points once the result is in.
+    const rowData = players.map(p => {
       const pred = p.preds[m.id];
       const hasPred = pred && pred.home != null && pred.away != null;
 
@@ -2835,6 +2843,8 @@ async function renderAllPicks() {
       let pickLabel = "—";
       let pointsHtml = "";
       let icon = "";
+      let pts = 0;            // numeric points for sorting
+      let scored = false;     // did this row actually earn/resolve points?
 
       if (!locked && !p.isMe) {
         // Hide other players' picks before lockout
@@ -2850,27 +2860,45 @@ async function renderAllPicks() {
         pickLabel = `${pred.home}–${pred.away}`;
         icon = "⏳";
       } else {
+        scored = true;
         const mul = m.stage === "Knockout" ? 1.5 : 1;
         if (pred.home === result.home && pred.away === result.away) {
           pickClass  = "pick-exact";
           pickLabel  = `${pred.home}–${pred.away}`;
           icon       = "🎯";
-          const pts  = 3 * mul;
+          pts        = 3 * mul;
           pointsHtml = `<span class="text-green-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
         } else if (getOutcome(pred.home, pred.away) === getOutcome(result.home, result.away)) {
           pickClass  = "pick-correct";
           pickLabel  = `${pred.home}–${pred.away}`;
           icon       = "✅";
-          const pts  = 1 * mul;
+          pts        = 1 * mul;
           pointsHtml = `<span class="text-yellow-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
         } else {
           pickClass  = "pick-wrong";
           pickLabel  = `${pred.home}–${pred.away}`;
           icon       = "❌";
+          pts        = 0;
           pointsHtml = `<span class="text-slate-600 text-xs ml-2">0 pts</span>`;
         }
       }
 
+      return { p, pickClass, pickLabel, pointsHtml, icon, pts, scored };
+    });
+
+    // Once the match is over, sort rows by points (highest first).
+    // Ties keep you-first, then alphabetical. Before the result, preserve the
+    // original you-first / alphabetical order.
+    if (hasResult) {
+      rowData.sort((a, b) =>
+        (b.pts - a.pts) ||
+        (b.p.isMe - a.p.isMe) ||
+        a.p.name.localeCompare(b.p.name)
+      );
+    }
+
+    rowData.forEach(rd => {
+      const p = rd.p;
       const av = avatarContent(p.uid, p.name.slice(0,2).toUpperCase());
       const row = document.createElement("div");
       row.className = `flex items-center justify-between gap-3 px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
@@ -2880,8 +2908,8 @@ async function renderAllPicks() {
           <span class="text-sm font-medium truncate">${p.name}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <span class="${pickClass} pick-score rounded-lg px-3 py-1">${icon} ${pickLabel}</span>
-          ${pointsHtml}
+          <span class="${rd.pickClass} pick-score rounded-lg px-3 py-1">${rd.icon} ${rd.pickLabel}</span>
+          ${rd.pointsHtml}
         </div>`;
       rowsWrap.appendChild(row);
     });
