@@ -3,7 +3,7 @@
 // All paths are resolved relative to this file's location, so no hard-coded base URL needed.
 //
 // Bump CACHE_VERSION whenever you ship a new index.html so users get the update.
-const CACHE_VERSION = "wc2026-v12";
+const CACHE_VERSION = "wc2026-v13";
 
 // Resolve paths against the service worker's own URL so they work no matter
 // where the site is hosted (root, subdirectory, custom domain, etc.).
