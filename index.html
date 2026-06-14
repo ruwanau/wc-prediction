@@ -589,8 +589,12 @@
       <div>
         <label class="block text-xs text-slate-400 mb-1.5 uppercase tracking-widest">Password</label>
         <input id="liPass" type="password" class="auth-input" placeholder="••••••••" autocomplete="current-password" />
+        <div class="text-right mt-1.5">
+          <button id="forgotPassBtn" type="button" class="text-xs text-yellow-400 hover:underline">Forgot password?</button>
+        </div>
       </div>
       <p id="liErr" class="form-err"></p>
+      <p id="liInfo" class="text-green-400 text-xs" style="display:none"></p>
       <button id="liBtn" class="btn-gold mt-1">Sign In</button>
       <p class="text-center text-xs text-slate-500 pt-1">
         No account? <button class="text-yellow-400 hover:underline" onclick="authTab('register')">Create one — it's free</button>
@@ -1432,6 +1436,16 @@ Erling Haaland | Norway | ST
         </div>
       </div>
 
+      <!-- Scoring Audit -->
+      <div class="glass rounded-2xl p-5">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+          <h3 class="display-font text-xl text-yellow-400">Scoring Audit</h3>
+          <button id="runAuditBtn" class="bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-5 py-2.5 rounded-xl transition text-sm">🔍 Verify All Points</button>
+        </div>
+        <p class="text-slate-500 text-xs mb-4">Recomputes every player's score directly from their picks and the entered results, showing a full per-match breakdown so you can confirm each point. Blank picks score nothing.</p>
+        <div id="auditOutput" class="hidden space-y-4"></div>
+      </div>
+
       <!-- Danger Zone -->
       <div class="bg-red-950/40 rounded-2xl p-5 border border-red-700/50">
         <h3 class="display-font text-xl text-red-400 mb-1">Danger Zone</h3>
@@ -1483,7 +1497,8 @@ import {
   updateProfile,
   signOut,
   onAuthStateChanged,
-  fetchSignInMethodsForEmail
+  fetchSignInMethodsForEmail,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // ── CONFIG ────────────────────────────────────────────────────
@@ -1532,6 +1547,8 @@ window.authTab = function(tab) {
   document.getElementById("formRegister").classList.toggle("hidden", login);
   document.getElementById("liErr").style.display = "none";
   document.getElementById("rgErr").style.display = "none";
+  const liInfo = document.getElementById("liInfo");
+  if (liInfo) liInfo.style.display = "none";
 };
 
 function showErr(id, msg) {
@@ -1565,7 +1582,38 @@ document.getElementById("liBtn").addEventListener("click", async () => {
   document.getElementById(id).addEventListener("keydown", e => { if(e.key==="Enter") document.getElementById("liBtn").click(); })
 );
 
-// ── REGISTER ──────────────────────────────────────────────────
+// ── FORGOT PASSWORD ───────────────────────────────────────────
+document.getElementById("forgotPassBtn").addEventListener("click", async () => {
+  const email = document.getElementById("liEmail").value.trim();
+  const errEl  = document.getElementById("liErr");
+  const infoEl = document.getElementById("liInfo");
+  errEl.style.display = "none";
+  infoEl.style.display = "none";
+
+  if (!email) {
+    showErr("liErr", "Enter your email address above first, then tap “Forgot password?”.");
+    return;
+  }
+
+  const btn = document.getElementById("forgotPassBtn");
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    await sendPasswordResetEmail(auth, email);
+    infoEl.textContent = `Password reset email sent to ${email}. Check your inbox (and spam folder), then follow the link to set a new password.`;
+    infoEl.style.display = "block";
+  } catch(e) {
+    // For privacy, Firebase may return auth/user-not-found; show a friendly note either way.
+    const msg = e.code === "auth/invalid-email"
+      ? "That doesn't look like a valid email address."
+      : e.code === "auth/user-not-found"
+        ? "No account is registered with that email. Double-check the address, or create a new account."
+        : "Couldn't send the reset email: " + e.message;
+    showErr("liErr", msg);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+});
 document.getElementById("rgBtn").addEventListener("click", async () => {
   const name  = document.getElementById("rgName").value.trim();
   const email = document.getElementById("rgEmail").value.trim();
@@ -2404,7 +2452,12 @@ async function calculateLeaderboard() {
     matches.forEach(m => {
       const pred = data.predictions?.[m.id];
       const act  = results[m.id];
-      if (!pred || act?.home === undefined) return;
+      // Require a COMPLETE numeric prediction (blank picks are saved as null and
+      // must not score — otherwise getOutcome(null,null)==="DRAW" would wrongly
+      // earn a point on drawn results).
+      const hasPred = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
+      const hasResult = act && act.home !== undefined && act.away !== undefined;
+      if (!hasPred || !hasResult) return;
       const mul = m.stage === "Knockout" ? 1.5 : 1;
       const isExact   = pred.home === act.home && pred.away === act.away;
       const isOutcome = getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away);
@@ -2469,8 +2522,133 @@ async function calculateLeaderboard() {
   });
 }
 
-// ── WIN/DRAW/LOSS PROBABILITY BARS ────────────────────────────
-// Strategy: try The Odds API (real bookmaker odds incl. Bet365) first.
+// ── SCORING AUDIT (admin) ─────────────────────────────────────
+// Independently recomputes every player's points from picks + results and
+// renders a full breakdown, so the leaderboard can be validated by eye.
+async function runScoringAudit() {
+  const out = document.getElementById("auditOutput");
+  if (!out) return;
+  out.classList.remove("hidden");
+  out.innerHTML = `<div class="text-slate-400 text-sm animate-pulse">Crunching every pick against every result…</div>`;
+
+  let matches, results, predSnap, tPicks, tResult;
+  try {
+    [matches, results, predSnap] = await Promise.all([
+      getMatches(), getResults(), getDocs(collection(db,"predictions"))
+    ]);
+    tPicks  = await getAllTournamentPicks();
+    tResult = await getTournamentResult();
+  } catch(e) {
+    out.innerHTML = `<div class="text-red-400 text-sm">Audit failed to load data: ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+
+  const champion  = (tResult.champion  || "").trim().toLowerCase();
+  const topScorer = (tResult.topScorer || "").trim().toLowerCase();
+
+  const predByUid = {};
+  predSnap.forEach(ds => predByUid[ds.id] = ds.data());
+  const allUids = new Set([...Object.keys(predByUid), ...Object.keys(tPicks)]);
+
+  // Sort matches chronologically for readable breakdowns
+  const sortedMatches = [...matches].sort((a,b)=>(a.kickoffUtcMs||0)-(b.kickoffUtcMs||0));
+
+  const players = [];
+  allUids.forEach(uid => {
+    const data = predByUid[uid] || {};
+    const tp   = tPicks[uid] || {};
+    const name = data.user || tp.user || "Unknown";
+    const preds = data.predictions || {};
+
+    let matchPts = 0, exact = 0, outcome = 0, scoredGames = 0, blankOrNoPick = 0;
+    const rows = [];
+
+    sortedMatches.forEach(m => {
+      const pred = preds[m.id];
+      const act  = results[m.id];
+      const hasPred   = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
+      const hasResult = act && act.home !== undefined && act.away !== undefined;
+      const mul = m.stage === "Knockout" ? 1.5 : 1;
+
+      let pickStr = "—", resStr = "—", note = "", pts = 0, cls = "text-slate-600";
+
+      if (!hasResult) {
+        resStr = "—";
+        pickStr = hasPred ? `${pred.home}–${pred.away}` : (pred ? "blank" : "no pick");
+        note = "result pending";
+      } else {
+        resStr = `${act.home}–${act.away}`;
+        if (!hasPred) {
+          pickStr = pred ? "blank" : "no pick";
+          note = "no valid pick → 0";
+          blankOrNoPick++;
+        } else {
+          pickStr = `${pred.home}–${pred.away}`;
+          scoredGames++;
+          const isExact = pred.home === act.home && pred.away === act.away;
+          const isOutcome = getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away);
+          if (isExact)   { exact++; }
+          if (isOutcome) { outcome++; }
+          if (isExact)        { pts = 3*mul; note = `exact${mul!==1?` ×${mul}`:""}`; cls = "text-green-400"; }
+          else if (isOutcome) { pts = 1*mul; note = `result${mul!==1?` ×${mul}`:""}`; cls = "text-yellow-400"; }
+          else                { pts = 0; note = "wrong"; cls = "text-slate-500"; }
+          matchPts += pts;
+        }
+      }
+
+      rows.push(`
+        <tr class="border-b border-slate-800">
+          <td class="py-1.5 px-2 text-slate-300">${escapeHtml(m.home)} vs ${escapeHtml(m.away)}</td>
+          <td class="py-1.5 px-2 text-center"><span class="px-1.5 py-0 rounded text-[10px] ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage[0]}</span></td>
+          <td class="py-1.5 px-2 text-center font-mono">${pickStr}</td>
+          <td class="py-1.5 px-2 text-center font-mono text-yellow-400">${resStr}</td>
+          <td class="py-1.5 px-2 text-center text-xs ${cls}">${note}</td>
+          <td class="py-1.5 px-2 text-right font-bold ${pts>0?'text-green-400':'text-slate-600'}">${pts? (pts%1===0?pts:pts.toFixed(1)) : "0"}</td>
+        </tr>`);
+    });
+
+    // Tournament bonus
+    let bonusPts = 0; const bonusNotes = [];
+    if (champion) {
+      if ((tp.champion1||"").trim().toLowerCase() === champion) { bonusPts += POINTS_CHAMPION_1; bonusNotes.push(`Champion 1st (+${POINTS_CHAMPION_1})`); }
+      else if ((tp.champion2||"").trim().toLowerCase() === champion) { bonusPts += POINTS_CHAMPION_2; bonusNotes.push(`Champion 2nd (+${POINTS_CHAMPION_2})`); }
+      else if ((tp.champion3||"").trim().toLowerCase() === champion) { bonusPts += POINTS_CHAMPION_3; bonusNotes.push(`Champion 3rd (+${POINTS_CHAMPION_3})`); }
+    }
+    if (topScorer && (tp.topScorer||"").trim().toLowerCase() === topScorer) { bonusPts += POINTS_TOP_SCORER; bonusNotes.push(`Top scorer (+${POINTS_TOP_SCORER})`); }
+
+    const total = matchPts + bonusPts;
+    players.push({ name, rows, matchPts, bonusPts, total, exact, outcome, scoredGames, blankOrNoPick, bonusNotes });
+  });
+
+  players.sort((a,b)=> b.total - a.total || a.name.localeCompare(b.name));
+
+  const fmt = n => n%1===0?n:n.toFixed(1);
+  out.innerHTML = players.map(p => `
+    <details class="bg-slate-900/50 border border-slate-700 rounded-xl overflow-hidden">
+      <summary class="cursor-pointer px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/3">
+        <span class="font-bold">${escapeHtml(p.name)}</span>
+        <span class="text-xs text-slate-400">
+          ${p.scoredGames} scored · 🎯${p.exact} ✅${p.outcome}
+          · match <span class="text-slate-200">${fmt(p.matchPts)}</span>
+          ${p.bonusPts?`+ bonus <span class="text-orange-300">${fmt(p.bonusPts)}</span>`:""}
+          = <span class="display-font text-lg text-yellow-400 ml-1">${fmt(p.total)}</span>
+        </span>
+      </summary>
+      <div class="px-3 pb-3 overflow-x-auto">
+        <table class="w-full text-xs min-w-[560px]">
+          <thead><tr class="text-slate-500 border-b border-slate-700">
+            <th class="py-1.5 px-2 text-left">Match</th><th class="py-1.5 px-2">Stg</th>
+            <th class="py-1.5 px-2">Pick</th><th class="py-1.5 px-2">Result</th>
+            <th class="py-1.5 px-2">Note</th><th class="py-1.5 px-2 text-right">Pts</th>
+          </tr></thead>
+          <tbody>${p.rows.join("")}</tbody>
+        </table>
+        ${p.bonusNotes.length ? `<div class="mt-2 text-xs text-orange-300">Bonus: ${p.bonusNotes.map(escapeHtml).join(", ")}</div>` : ""}
+        ${p.blankOrNoPick ? `<div class="mt-1 text-xs text-slate-500">${p.blankOrNoPick} completed match${p.blankOrNoPick>1?"es":""} with no valid pick (scored 0).</div>` : ""}
+      </div>
+    </details>`).join("") || `<div class="text-slate-400 text-sm">No players to audit yet.</div>`;
+}
+
 // Fall back to a Claude-based estimate if no key configured, rate-limited,
 // or the fixture isn't yet listed by bookmakers.
 const probCache = {};
@@ -2924,7 +3102,7 @@ async function renderAllPicks() {
     // for THIS match, so we can sort by points once the result is in.
     const rowData = players.map(p => {
       const pred = p.preds[m.id];
-      const hasPred = pred && pred.home != null && pred.away != null;
+      const hasPred = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
 
       let pickClass = "pick-none";
       let pickLabel = "—";
@@ -3034,7 +3212,7 @@ async function buildReportDataset() {
     matches.forEach(m => {
       const pred = p.preds[m.id];
       const act  = results[m.id];
-      const hasPred   = pred && pred.home != null && pred.away != null;
+      const hasPred   = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
       const hasResult = act?.home !== undefined;
       const mul = m.stage === "Knockout" ? 1.5 : 1;
 
@@ -4079,7 +4257,7 @@ async function renderTournamentView(uid) {
     listEl.innerHTML = sorted.map(m => {
       const pred = preds[m.id];
       const act  = results[m.id];
-      const hasPred = pred && pred.home != null && pred.away != null;
+      const hasPred = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
       const matchKickoffPassed = m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs;
       const visible = isMe || matchKickoffPassed;  // hide other players' un-played match picks
 
@@ -4267,6 +4445,15 @@ async function setupAdminTournamentControls() {
 }
 
 function attachAdminTournamentHandlers() {
+  const auditBtn = document.getElementById("runAuditBtn");
+  if (auditBtn) {
+    auditBtn.addEventListener("click", async () => {
+      auditBtn.disabled = true; const o = auditBtn.textContent; auditBtn.textContent = "Verifying…";
+      try { await runScoringAudit(); }
+      finally { auditBtn.textContent = o; auditBtn.disabled = false; }
+    });
+  }
+
   document.getElementById("saveTournamentResultBtn").addEventListener("click", async () => {
     const c = document.getElementById("adminChampion").value.trim();
     const t = document.getElementById("adminTopScorer").value.trim();
