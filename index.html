@@ -1083,9 +1083,9 @@
         <table class="w-full text-left">
           <thead>
             <tr class="border-b border-slate-700 text-slate-400">
-              <th class="py-3 px-3">Points</th>
               <th class="py-3 px-3">Rank</th>
               <th class="py-3 px-3">Player</th>
+              <th class="py-3 px-3">Points</th>
               <th class="py-3 px-3">Accuracy</th>
               <th class="py-3 px-3">Exact Scores</th>
               <th class="py-3 px-3">Correct Results</th>
@@ -2490,8 +2490,20 @@ async function renderMatches() {
   }
   if (expandKey === null && groups.length) expandKey = groups[groups.length-1].key;
 
+  // Display order: today / upcoming days first (chronological), then any fully
+  // past days afterwards (most-recent first). This keeps today's games at the
+  // top instead of being pushed down by earlier, already-played days.
+  const todayKey = localDateKey(Date.now());
+  const isPastDay = g => g.key < todayKey;
+  const orderedGroups = [...groups].sort((a,b) => {
+    const ap = isPastDay(a), bp = isPastDay(b);
+    if (ap !== bp) return ap ? 1 : -1;          // upcoming/today before past
+    if (ap) return (b.ms||0) - (a.ms||0);        // past days: most recent first
+    return (a.ms||0) - (b.ms||0);                // upcoming days: chronological
+  });
+
   // Render each day as a collapsible panel
-  con.innerHTML = groups.map(g => {
+  con.innerHTML = orderedGroups.map(g => {
     const open = g.key === expandKey;
     const total = g.matches.length;
     const openCount = g.matches.filter(m => !m.kickoffUtcMs || Date.now() < m.kickoffUtcMs).length;
@@ -2898,12 +2910,12 @@ async function calculateLeaderboard() {
     const row = document.createElement("tr");
     row.className = `border-b border-slate-800 transition ${e.isMe?"bg-yellow-400/5":"hover:bg-white/3"}`;
     row.innerHTML = `
-      <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>
       <td class="py-4 px-3 font-bold display-font text-lg ${rc}">${re}</td>
       <td class="py-4 px-3 font-medium">
         ${userFlagCache[e.uid] || ""}${escapeHtml(e.user)}
         ${e.isMe?'<span class="ml-2 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full">You</span>':""}
       </td>
+      <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>
       <td class="py-4 px-3 text-sm whitespace-nowrap">${accStr}</td>
       <td class="py-4 px-3 text-slate-300">${e.exact}</td>
       <td class="py-4 px-3 text-slate-300">${e.outcome}</td>
