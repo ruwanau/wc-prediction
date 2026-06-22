@@ -2469,7 +2469,7 @@ async function renderMatches() {
   }
 
   // ── Group predict cards by local match-day ──
-  // Sort ascending so day panels read chronologically (getMatches() is desc).
+  // Sort ascending first just to build groups; we re-order for display below.
   const ascMatches = [...matches].sort((a,b) => (a.kickoffUtcMs||Infinity) - (b.kickoffUtcMs||Infinity));
   const groups = [];           // [{ key, ms, matches:[] }]
   const groupIndex = {};
@@ -2490,17 +2490,17 @@ async function renderMatches() {
   }
   if (expandKey === null && groups.length) expandKey = groups[groups.length-1].key;
 
-  // Display order: today / upcoming days first (chronological), then any fully
-  // past days afterwards (most-recent first). This keeps today's games at the
-  // top instead of being pushed down by earlier, already-played days.
+  // Display order: upcoming / today days first in DESCENDING order (latest day
+  // at the top), then fully-finished historical days last (also most-recent
+  // first). Within each day, matches are shown in descending kickoff order.
   const todayKey = localDateKey(Date.now());
   const isPastDay = g => g.key < todayKey;
   const orderedGroups = [...groups].sort((a,b) => {
     const ap = isPastDay(a), bp = isPastDay(b);
-    if (ap !== bp) return ap ? 1 : -1;          // upcoming/today before past
-    if (ap) return (b.ms||0) - (a.ms||0);        // past days: most recent first
-    return (a.ms||0) - (b.ms||0);                // upcoming days: chronological
+    if (ap !== bp) return ap ? 1 : -1;     // upcoming/today before finished
+    return (b.ms||0) - (a.ms||0);          // both buckets: latest day first (descending)
   });
+  orderedGroups.forEach(g => g.matches.sort((a,b) => (b.kickoffUtcMs||0) - (a.kickoffUtcMs||0)));
 
   // Render each day as a collapsible panel
   con.innerHTML = orderedGroups.map(g => {
