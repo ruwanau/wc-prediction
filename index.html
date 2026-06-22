@@ -364,6 +364,14 @@
     /* Subtle green edge on cards that have a saved prediction */
     [data-pred-card].card-predicted { border-color: rgba(34,197,94,0.35); }
 
+    /* ── Predict-tab day groups ── */
+    .day-group { border: 1px solid rgba(255,255,255,0.07); }
+    .day-summary { list-style: none; }
+    .day-summary::-webkit-details-marker { display: none; }
+    .day-summary:hover { background: rgba(255,255,255,0.02); }
+    details.day-group[open] > .day-summary .day-caret { transform: rotate(90deg); }
+    details.day-group:not([open]) > .day-summary { background: rgba(245,200,66,0.03); }
+
     /* ── Probability Bar ── */
     .prob-bar-wrap { font-size: 0.72rem; }
     .prob-bar-track {
@@ -795,7 +803,7 @@
 
     <div id="autoLockBanners" class="space-y-2"></div>
 
-    <div id="matchesContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+    <div id="matchesContainer" class="space-y-4"></div>
 
     <div id="noMatchesMsg" class="hidden text-center text-slate-500 py-16">
       <div class="text-5xl mb-3">📅</div>
@@ -810,7 +818,7 @@
 
     <div class="glass rounded-2xl p-6">
       <h2 class="display-font text-3xl text-yellow-400 mb-1">Game Picks</h2>
-      <p class="text-slate-400 text-sm">Everyone's match predictions, compared to the final result</p>
+      <p class="text-slate-400 text-sm">Everyone's match predictions, compared to the final result · Only matches whose prediction window has closed are shown</p>
       <div class="flex flex-wrap gap-4 mt-4 text-xs">
         <span class="pick-exact   rounded-lg px-3 py-1.5 font-medium">🎯 Exact score (+3 pts)</span>
         <span class="pick-correct rounded-lg px-3 py-1.5 font-medium">✅ Correct result (+1 pt)</span>
@@ -824,8 +832,8 @@
 
     <div id="allPicksEmpty" class="hidden text-center text-slate-500 py-16">
       <div class="text-5xl mb-3">🔮</div>
-      <div class="text-lg">No predictions saved yet.</div>
-      <div class="text-sm mt-1">Check back once players have made their picks.</div>
+      <div class="text-lg">Nothing to show here yet.</div>
+      <div class="text-sm mt-1">Games appear once their prediction window closes (at kickoff). Until then, everyone's picks stay hidden.</div>
     </div>
 
   </section>
@@ -1075,12 +1083,13 @@
         <table class="w-full text-left">
           <thead>
             <tr class="border-b border-slate-700 text-slate-400">
+              <th class="py-3 px-3">Points</th>
               <th class="py-3 px-3">Rank</th>
               <th class="py-3 px-3">Player</th>
+              <th class="py-3 px-3">Accuracy</th>
               <th class="py-3 px-3">Exact Scores</th>
               <th class="py-3 px-3">Correct Results</th>
               <th class="py-3 px-3">Bonus</th>
-              <th class="py-3 px-3">Points</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>
@@ -1816,6 +1825,29 @@ function fmtAEST(ms) {
     hour:"2-digit", minute:"2-digit", hour12:true
   }).format(new Date(ms));
 }
+// Stable per-day grouping key in the player's LOCAL timezone (YYYY-MM-DD),
+// so "game day" matches how the user actually experiences the calendar.
+function localDateKey(ms) {
+  if (!ms) return "tba";
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+// Friendly heading for a day group, e.g. "Today · Mon, Jun 22" / "Sat, Jun 27".
+function dateGroupLabel(ms) {
+  if (!ms) return "Date TBA";
+  const dateStr = new Intl.DateTimeFormat(undefined, {
+    weekday:"long", month:"short", day:"numeric"
+  }).format(new Date(ms));
+  const todayKey = localDateKey(Date.now());
+  const tmrKey   = localDateKey(Date.now() + 86400000);
+  const key      = localDateKey(ms);
+  if (key === todayKey) return `Today · ${dateStr}`;
+  if (key === tmrKey)   return `Tomorrow · ${dateStr}`;
+  return dateStr;
+}
 function matchLocked(match, globalLocked) {
   if (globalLocked) return true;
   if (!match.kickoffUtcMs) return false;
@@ -2382,7 +2414,8 @@ async function renderMatches() {
 
   document.getElementById("noMatchesMsg").classList.toggle("hidden", matches.length > 0);
 
-  matches.forEach(m => {
+  // Helper: build a single predict card's HTML for a match
+  function predictCardHTML(m) {
     const locked    = matchLocked(m, globalLocked);
     const actual    = results[m.id];
     const hasResult = actual?.home !== undefined;
@@ -2394,60 +2427,128 @@ async function renderMatches() {
     else if (locked) badge = `<span class="auto-lock-indicator">🔒 Locked</span>`;
     else if (minsLeft !== null && minsLeft <= 60) badge = `<span class="auto-lock-indicator">⏳ Locks in ~${Math.max(0,Math.floor(minsLeft))} min</span>`;
 
-    // Predict card
-    const card = document.createElement("div");
-    card.className = "glass rounded-2xl p-6 match-card";
-    card.setAttribute("data-pred-card", m.id);
-    card.setAttribute("data-locked", locked ? "1" : "0");
-    card.innerHTML = `
-      <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-        <div class="flex items-center gap-2">
-          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
-          ${badge}
+    return `
+      <div class="glass rounded-2xl p-6 match-card" data-pred-card="${m.id}" data-locked="${locked?"1":"0"}">
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+            ${badge}
+          </div>
+          <span class="text-xs text-slate-400">📅 ${fmtLocal(m.kickoffUtcMs)}</span>
         </div>
-        <span class="text-xs text-slate-400">📅 ${fmtLocal(m.kickoffUtcMs)}</span>
-      </div>
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex-1 text-right"><div class="text-xl font-bold">${m.home}</div></div>
-        <div class="flex items-center gap-3">
-          <input type="number" min="0" ${locked?"disabled":""} id="home-${m.id}"
-            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
-          <div class="display-font text-2xl text-yellow-400">:</div>
-          <input type="number" min="0" ${locked?"disabled":""} id="away-${m.id}"
-            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex-1 text-right"><div class="text-xl font-bold">${m.home}</div></div>
+          <div class="flex items-center gap-3">
+            <input type="number" min="0" ${locked?"disabled":""} id="home-${m.id}"
+              class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+            <div class="display-font text-2xl text-yellow-400">:</div>
+            <input type="number" min="0" ${locked?"disabled":""} id="away-${m.id}"
+              class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+          </div>
+          <div class="flex-1"><div class="text-xl font-bold">${m.away}</div></div>
         </div>
-        <div class="flex-1"><div class="text-xl font-bold">${m.away}</div></div>
-      </div>
-      ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
-        Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}</div>` : ""}
-      ${!locked ? `
-      <div class="flex items-center justify-between gap-3 mt-4">
-        <span id="status-${m.id}" data-locked="0" class="pred-status pred-status-todo">○ Not predicted</span>
-        <button class="save-one-btn bg-slate-800 hover:bg-yellow-400 hover:text-black border border-slate-600 hover:border-yellow-400 text-slate-200 font-bold text-xs px-4 py-2 rounded-lg transition" data-id="${m.id}">💾 Save this pick</button>
-      </div>` : `
-      <div class="mt-4">
-        <span id="status-${m.id}" data-locked="1" class="pred-status pred-status-locked">🔒 Locked</span>
-      </div>`}
-      <div id="prob-bar-${m.id}" class="prob-bar-wrap mt-4"></div>
-      <div class="mt-3 border-t border-white/5 pt-3">
-        <button class="ai-preview-btn w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-400 hover:text-yellow-300 bg-slate-900/50 hover:bg-slate-800/80 border border-slate-700/60 hover:border-yellow-600/40 rounded-xl px-4 py-2.5 transition-all"
-          data-id="${m.id}" data-home="${m.home}" data-away="${m.away}" data-stage="${m.stage}" data-kickoff="${fmtLocal(m.kickoffUtcMs)}">
-          <span class="text-base">🤖</span> AI Match Preview
-        </button>
-        <div id="ai-panel-${m.id}" class="hidden mt-3 bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 text-sm text-slate-300 leading-relaxed space-y-1 ai-panel"></div>
+        ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
+          Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}</div>` : ""}
+        ${!locked ? `
+        <div class="flex items-center justify-between gap-3 mt-4">
+          <span id="status-${m.id}" data-locked="0" class="pred-status pred-status-todo">○ Not predicted</span>
+          <button class="save-one-btn bg-slate-800 hover:bg-yellow-400 hover:text-black border border-slate-600 hover:border-yellow-400 text-slate-200 font-bold text-xs px-4 py-2 rounded-lg transition" data-id="${m.id}">💾 Save this pick</button>
+        </div>` : `
+        <div class="mt-4">
+          <span id="status-${m.id}" data-locked="1" class="pred-status pred-status-locked">🔒 Locked</span>
+        </div>`}
+        <div id="prob-bar-${m.id}" class="prob-bar-wrap mt-4"></div>
+        <div class="mt-3 border-t border-white/5 pt-3">
+          <button class="ai-preview-btn w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-400 hover:text-yellow-300 bg-slate-900/50 hover:bg-slate-800/80 border border-slate-700/60 hover:border-yellow-600/40 rounded-xl px-4 py-2.5 transition-all"
+            data-id="${m.id}" data-home="${m.home}" data-away="${m.away}" data-stage="${m.stage}" data-kickoff="${fmtLocal(m.kickoffUtcMs)}">
+            <span class="text-base">🤖</span> AI Match Preview
+          </button>
+          <div id="ai-panel-${m.id}" class="hidden mt-3 bg-slate-900/70 border border-slate-700/60 rounded-xl p-4 text-sm text-slate-300 leading-relaxed space-y-1 ai-panel"></div>
+        </div>
       </div>`;
-    con.appendChild(card);
-    // Load probability bar asynchronously (doesn't block render)
-    if (!hasResult) loadProbBar(m.id, m.home, m.away);
+  }
 
+  // ── Group predict cards by local match-day ──
+  // Sort ascending so day panels read chronologically (getMatches() is desc).
+  const ascMatches = [...matches].sort((a,b) => (a.kickoffUtcMs||Infinity) - (b.kickoffUtcMs||Infinity));
+  const groups = [];           // [{ key, ms, matches:[] }]
+  const groupIndex = {};
+  ascMatches.forEach(m => {
+    const key = localDateKey(m.kickoffUtcMs);
+    if (groupIndex[key] === undefined) {
+      groupIndex[key] = groups.length;
+      groups.push({ key, ms: m.kickoffUtcMs, matches: [] });
+    }
+    groups[groupIndex[key]].matches.push(m);
+  });
+
+  // Which day is the "next game day"? Earliest group containing a match
+  // that hasn't kicked off yet. If all matches are in the past, expand the last.
+  let expandKey = null;
+  for (const g of groups) {
+    if (g.matches.some(m => !m.kickoffUtcMs || Date.now() < m.kickoffUtcMs)) { expandKey = g.key; break; }
+  }
+  if (expandKey === null && groups.length) expandKey = groups[groups.length-1].key;
+
+  // Render each day as a collapsible panel
+  con.innerHTML = groups.map(g => {
+    const open = g.key === expandKey;
+    const total = g.matches.length;
+    const openCount = g.matches.filter(m => !m.kickoffUtcMs || Date.now() < m.kickoffUtcMs).length;
+    const cards = g.matches.map(predictCardHTML).join("");
+    const subtitle = openCount > 0
+      ? `<span class="text-amber-300/90 text-xs font-medium">${openCount} open</span>`
+      : `<span class="text-slate-500 text-xs font-medium">all locked</span>`;
+    return `
+      <details class="day-group glass rounded-2xl overflow-hidden" ${open?"open":""}>
+        <summary class="day-summary flex items-center justify-between gap-3 px-5 py-4 cursor-pointer select-none">
+          <div class="flex items-center gap-3">
+            <span class="day-caret text-yellow-400 transition-transform">▸</span>
+            <span class="display-font text-xl text-yellow-400">${dateGroupLabel(g.ms)}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            ${subtitle}
+            <span class="text-slate-500 text-xs">${total} match${total>1?"es":""}</span>
+          </div>
+        </summary>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 px-4 pb-5 pt-1">
+          ${cards}
+        </div>
+      </details>`;
+  }).join("");
+
+  // Load probability bars for visible (open-panel) upcoming matches
+  groups.forEach(g => {
+    if (g.key !== expandKey) return;  // only the expanded day loads bars eagerly
+    g.matches.forEach(m => {
+      if (!(results[m.id]?.home !== undefined)) loadProbBar(m.id, m.home, m.away);
+    });
+  });
+  // When a collapsed day is expanded, lazily load its probability bars
+  con.querySelectorAll("details.day-group").forEach(det => {
+    det.addEventListener("toggle", () => {
+      if (!det.open) return;
+      det.querySelectorAll("[data-pred-card]").forEach(card => {
+        const mid = card.getAttribute("data-pred-card");
+        const m = matches.find(x => x.id === mid);
+        if (m && !(results[m.id]?.home !== undefined) && !probCache[mid]) loadProbBar(m.id, m.home, m.away);
+      });
+    });
+  });
+
+  // ── Admin cards (flat list, not grouped) ──
+  ascMatches.forEach(m => {
+    const actual    = results[m.id];
     // Admin card
+    const started = m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs;
     const ac = document.createElement("div");
     ac.className = "bg-slate-800/50 border border-slate-700 rounded-xl p-4";
     ac.innerHTML = `
       <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <div>
+        <div class="min-w-0">
           <div class="font-bold">${m.home} vs ${m.away}</div>
-          <div class="text-xs text-slate-500 mt-0.5">${fmtLocal(m.kickoffUtcMs)} · ${m.stage}</div>
+          <div class="text-xs text-slate-500 mt-0.5">${fmtAEST(m.kickoffUtcMs)} AEST · ${m.stage}</div>
+          ${!started ? `<button class="edit-time-toggle text-xs text-yellow-400/80 hover:text-yellow-300 mt-1" data-id="${m.id}">✏️ Edit kickoff time</button>` : ""}
         </div>
         <div class="flex items-center gap-3">
           <input type="number" min="0" id="actual-home-${m.id}" value="${actual?.home??""}"
@@ -2458,7 +2559,14 @@ async function renderMatches() {
           <button class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm transition" data-id="${m.id}">Save</button>
           <button class="del-result-btn bg-slate-700 hover:bg-red-700 border border-slate-600 hover:border-red-600 px-3 py-2 rounded-lg text-sm transition" title="Delete result" data-id="${m.id}">🗑</button>
         </div>
-      </div>`;
+      </div>
+      ${!started ? `
+      <div id="edit-time-panel-${m.id}" class="hidden mt-3 pt-3 border-t border-white/5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <label class="text-xs text-slate-400 whitespace-nowrap">New kickoff (AEST):</label>
+        <input type="datetime-local" id="edit-kickoff-${m.id}" value="${m.kickoffAEST || ''}"
+          class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500 transition" />
+        <button class="update-time-btn bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold text-sm transition" data-id="${m.id}">Update Time</button>
+      </div>` : ""}`;
     adm.appendChild(ac);
   });
 
@@ -2470,14 +2578,24 @@ async function renderMatches() {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
       const orig = btn.innerHTML;
-      btn.disabled = true; btn.innerHTML = "Saving…";
+      const homeInp = document.getElementById(`home-${id}`);
+      const awayInp = document.getElementById(`away-${id}`);
+      // Please-wait: lock this card's inputs + button until the save resolves
+      btn.disabled = true;
+      if (homeInp) homeInp.disabled = true;
+      if (awayInp) awayInp.disabled = true;
+      btn.innerHTML = "Saving…";
       const res = await saveSinglePrediction(id);
       if (res === "saved")        btn.innerHTML = "Saved ✓";
       else if (res === "cleared") btn.innerHTML = "Cleared";
       else if (res === "empty")   { btn.innerHTML = "Enter a score"; }
       else if (res === "locked")  { btn.innerHTML = "Locked 🔒"; }
       else                        { btn.innerHTML = "Error"; }
-      setTimeout(()=>{ btn.innerHTML = orig; btn.disabled = false; }, 1600);
+      setTimeout(()=>{
+        btn.innerHTML = orig; btn.disabled = false;
+        if (homeInp) homeInp.disabled = false;
+        if (awayInp) awayInp.disabled = false;
+      }, 1200);
     });
   });
 
@@ -2490,18 +2608,29 @@ async function renderMatches() {
     });
   });
 
-  // Save result
+  // Save result — lock the inputs + button until the write completes
   document.querySelectorAll(".save-result-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
-      const h  = document.getElementById(`actual-home-${id}`).value;
-      const a  = document.getElementById(`actual-away-${id}`).value;
+      const homeInp = document.getElementById(`actual-home-${id}`);
+      const awayInp = document.getElementById(`actual-away-${id}`);
+      const h = homeInp.value, a = awayInp.value;
       if (h===""||a==="") { alert("Enter both scores."); return; }
-      btn.textContent = "Saving…";
-      await setDoc(doc(db,"results",id),{home:Number(h),away:Number(a)});
-      btn.textContent = "Saved ✓";
-      setTimeout(()=>{ btn.textContent="Save"; }, 2000);
-      calculateLeaderboard();
+
+      // Please-wait: prevent further entry until this save finishes
+      btn.disabled = true; homeInp.disabled = true; awayInp.disabled = true;
+      const orig = btn.textContent; btn.textContent = "Saving…";
+      try {
+        await setDoc(doc(db,"results",id),{home:Number(h),away:Number(a)});
+        btn.textContent = "Saved ✓";
+        await calculateLeaderboard();
+        setTimeout(()=>{ btn.textContent = orig; }, 1800);
+      } catch(e) {
+        alert("Couldn't save result: " + e.message);
+        btn.textContent = orig;
+      } finally {
+        btn.disabled = false; homeInp.disabled = false; awayInp.disabled = false;
+      }
     });
   });
 
@@ -2513,6 +2642,37 @@ async function renderMatches() {
       showConfirm("Delete Result",
         `Remove the result for ${lbl}? The match stays but scoring will be undone.`,
         async () => { await deleteDoc(doc(db,"results",id)); renderMatches(); renderResultsTab(); calculateLeaderboard(); });
+    });
+  });
+
+  // Toggle the edit-kickoff panel
+  document.querySelectorAll(".edit-time-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const panel = document.getElementById(`edit-time-panel-${btn.dataset.id}`);
+      if (panel) panel.classList.toggle("hidden");
+    });
+  });
+
+  // Update kickoff time (only available for not-yet-started matches)
+  document.querySelectorAll(".update-time-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const val = document.getElementById(`edit-kickoff-${id}`)?.value;
+      if (!val) { alert("Please choose a new kickoff date and time."); return; }
+      const newMs = aestLocalToUtcMs(val);
+      // Guard: don't let admin set a time in the past (would instantly lock it)
+      if (newMs <= Date.now()) {
+        if (!confirm("That time is in the past, which will immediately lock predictions for this match. Continue?")) return;
+      }
+      const orig = btn.textContent; btn.disabled = true; btn.textContent = "Updating…";
+      try {
+        await setDoc(doc(db,"matches",id), { kickoffUtcMs: newMs, kickoffAEST: val }, { merge: true });
+        btn.textContent = "Updated ✓";
+        setTimeout(()=>{ renderMatches(); }, 700);
+      } catch(e) {
+        alert("Couldn't update time: " + e.message);
+        btn.textContent = orig; btn.disabled = false;
+      }
     });
   });
 
@@ -2603,6 +2763,9 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
 
   const btn = document.getElementById("savePredictionsBtn");
   const orig = btn.textContent; btn.disabled = true; btn.textContent = "Saving…";
+  // Please-wait: lock all prediction inputs + per-card save buttons during the write
+  const allInputs = document.querySelectorAll('[data-pred-card] .score-input, .save-one-btn');
+  allInputs.forEach(el => el.disabled = true);
   try {
     await setDoc(doc(db,"predictions",currentUser.uid), {
       user: name,
@@ -2625,6 +2788,7 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
     alert("Couldn't save: " + e.message);
   } finally {
     btn.textContent = orig; btn.disabled = false;
+    allInputs.forEach(el => el.disabled = false);
   }
 });
 
@@ -2665,7 +2829,7 @@ async function calculateLeaderboard() {
     const tp = tPicks[uid] || {};
     const userName = data.user || tp.user || "Unknown";
 
-    let matchPts = 0, exact = 0, outcome = 0;
+    let matchPts = 0, exact = 0, outcome = 0, decided = 0;
     matches.forEach(m => {
       const pred = data.predictions?.[m.id];
       const act  = results[m.id];
@@ -2675,6 +2839,7 @@ async function calculateLeaderboard() {
       const hasPred = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
       const hasResult = act && act.home !== undefined && act.away !== undefined;
       if (!hasPred || !hasResult) return;
+      decided++;  // a resolved match the player actually predicted
       const mul = m.stage === "Knockout" ? 1.5 : 1;
       const isExact   = pred.home === act.home && pred.away === act.away;
       const isOutcome = getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away);
@@ -2685,6 +2850,9 @@ async function calculateLeaderboard() {
       if (isExact)        matchPts += 3*mul;
       else if (isOutcome) matchPts += 1*mul;
     });
+
+    // Accuracy = correct outcomes ÷ resolved games the player actually picked.
+    const accuracy = decided > 0 ? (outcome / decided) * 100 : null;
 
     // Tournament bonus points (only awarded when admin has entered the actual result)
     let bonusPts = 0;
@@ -2701,7 +2869,7 @@ async function calculateLeaderboard() {
     board.push({
       uid,
       user: userName,
-      exact, outcome,
+      exact, outcome, decided, accuracy,
       matchPts, bonusPts, pts,
       isMe: currentUser && uid === currentUser.uid
     });
@@ -2723,18 +2891,23 @@ async function calculateLeaderboard() {
     const re = rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":rank;
     const pts = e.pts%1===0?e.pts:e.pts.toFixed(1);
     const bonus = e.bonusPts%1===0?e.bonusPts:e.bonusPts.toFixed(1);
+    const accStr = e.accuracy === null
+      ? `<span class="text-slate-600">—</span>`
+      : `<span class="font-bold ${e.accuracy>=66?'text-green-400':e.accuracy>=40?'text-yellow-300':'text-slate-300'}">${Math.round(e.accuracy)}%</span>
+         <span class="text-slate-600 text-xs ml-1">(${e.outcome}/${e.decided})</span>`;
     const row = document.createElement("tr");
     row.className = `border-b border-slate-800 transition ${e.isMe?"bg-yellow-400/5":"hover:bg-white/3"}`;
     row.innerHTML = `
+      <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>
       <td class="py-4 px-3 font-bold display-font text-lg ${rc}">${re}</td>
       <td class="py-4 px-3 font-medium">
         ${userFlagCache[e.uid] || ""}${escapeHtml(e.user)}
         ${e.isMe?'<span class="ml-2 text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 px-1.5 py-0.5 rounded-full">You</span>':""}
       </td>
+      <td class="py-4 px-3 text-sm whitespace-nowrap">${accStr}</td>
       <td class="py-4 px-3 text-slate-300">${e.exact}</td>
       <td class="py-4 px-3 text-slate-300">${e.outcome}</td>
-      <td class="py-4 px-3 text-orange-300 text-sm">${e.bonusPts>0 ? "+"+bonus : "—"}</td>
-      <td class="py-4 px-3 font-bold display-font text-xl text-yellow-400">${pts}</td>`;
+      <td class="py-4 px-3 text-orange-300 text-sm">${e.bonusPts>0 ? "+"+bonus : "—"}</td>`;
     tbody.appendChild(row);
   });
 }
@@ -3249,14 +3422,22 @@ function formatAIPreview(text, home, away) {
 
 // ── ALL PICKS TAB ─────────────────────────────────────────────
 async function renderAllPicks() {
-  const [matches, results, predSnap] = await Promise.all([
-    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  const [allMatches, results, predSnap, globalLocked] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions")), getLocked()
   ]);
   await refreshUserFlags();
 
   const container = document.getElementById("allPicksContainer");
   const emptyMsg  = document.getElementById("allPicksEmpty");
   container.innerHTML = "";
+
+  // Only show matches whose prediction window has FINISHED:
+  // either they've kicked off, have a result, or the admin has globally locked.
+  const matches = allMatches.filter(m => {
+    const hasResult = results[m.id]?.home !== undefined;
+    const kickedOff = m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs;
+    return hasResult || kickedOff || globalLocked;
+  });
 
   // Build list of players sorted alphabetically, marking current user first
   const players = [];
@@ -3265,7 +3446,7 @@ async function renderAllPicks() {
     players.push({ uid: ds.id, name: d.user || "Unknown", preds: d.predictions || {}, isMe: currentUser && ds.id === currentUser.uid });
   });
 
-  if (!players.length) {
+  if (!players.length || !matches.length) {
     emptyMsg.classList.remove("hidden");
     return;
   }
@@ -3282,8 +3463,8 @@ async function renderAllPicks() {
     const result   = results[m.id];
     const hasResult = result?.home !== undefined;
 
-    // For matches not yet locked, hide other people's picks (fair play)
-    const locked = (m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs) || hasResult;
+    // Every match here has its prediction window closed, so picks are visible.
+    const locked = true;
 
     const card = document.createElement("div");
     card.className = "glass rounded-2xl overflow-hidden";
