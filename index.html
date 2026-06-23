@@ -1471,6 +1471,26 @@
           </select>
           <button id="addMatchBtn" class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-bold transition">➕ Add Match</button>
         </div>
+
+        <!-- ── Bulk import via CSV ── -->
+        <div class="mt-6 pt-5 border-t border-white/5">
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+            <h4 class="font-bold text-slate-200">📥 Bulk import from CSV</h4>
+            <button id="downloadCsvTemplate" class="text-xs text-yellow-400 hover:underline">⬇ Download template</button>
+          </div>
+          <p class="text-slate-500 text-xs mb-3">
+            Columns: <code class="text-slate-400">home, away, kickoff, stage</code>.
+            <strong class="text-slate-400">kickoff</strong> is AEST in <code class="text-slate-400">YYYY-MM-DD HH:MM</code> (24-hour).
+            <strong class="text-slate-400">stage</strong> is <code class="text-slate-400">Group</code> or <code class="text-slate-400">Knockout</code> (defaults to Group).
+            Team names are auto-standardised (e.g. <em>USA → United States</em>).
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <input type="file" id="csvFileInput" accept=".csv,text/csv"
+              class="text-sm text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-100 file:font-medium hover:file:bg-slate-600 file:cursor-pointer" />
+            <button id="csvPreviewBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition">Preview</button>
+          </div>
+          <div id="csvPreview" class="hidden mt-4"></div>
+        </div>
       </div>
 
       <!-- Enter Results -->
@@ -2789,6 +2809,195 @@ document.getElementById("addMatchBtn").addEventListener("click", async () => {
   document.getElementById("kickoff").value  = "";
   alert(`Match added. Kickoff: ${fmtAEST(kickoffUtcMs)} AEST`);
 });
+
+// ── BULK IMPORT MATCHES FROM CSV ──────────────────────────────
+let csvParsedRows = null;  // validated rows ready to import
+
+// Minimal CSV line splitter that respects double-quoted fields.
+function splitCsvLine(line) {
+  const out = []; let cur = ""; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"') { if (line[i+1] === '"') { cur += '"'; i++; } else inQ = false; }
+      else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { out.push(cur); cur = ""; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Normalise a kickoff string to datetime-local form "YYYY-MM-DDTHH:MM".
+// Accepts "YYYY-MM-DD HH:MM", "YYYY-MM-DDTHH:MM", optional seconds.
+function normaliseKickoffStr(raw) {
+  if (!raw) return null;
+  let s = raw.trim().replace(" ", "T");
+  // strip seconds if present
+  const m = s.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(:\d{2})?$/);
+  if (!m) return null;
+  return m[1];
+}
+
+function parseMatchesCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+  if (!lines.length) return { rows: [], errors: ["File is empty."] };
+
+  // Detect + skip a header row if present
+  const first = splitCsvLine(lines[0]).map(s => s.toLowerCase());
+  const hasHeader = first.includes("home") && first.includes("away");
+  const startIdx = hasHeader ? 1 : 0;
+
+  // Resolve column positions (header) or assume home,away,kickoff,stage order
+  let col = { home:0, away:1, kickoff:2, stage:3 };
+  if (hasHeader) {
+    col = {
+      home: first.indexOf("home"),
+      away: first.indexOf("away"),
+      kickoff: first.findIndex(h => h.startsWith("kick")),
+      stage: first.indexOf("stage")
+    };
+  }
+
+  const rows = [], errors = [];
+  const validNames = new Set(MATCH_COUNTRIES.map(c => c.toLowerCase()));
+
+  for (let i = startIdx; i < lines.length; i++) {
+    const cells = splitCsvLine(lines[i]);
+    const lineNo = i + 1;
+    const homeRaw = (cells[col.home] || "").trim();
+    const awayRaw = (cells[col.away] || "").trim();
+    const kickRaw = (cells[col.kickoff] || "").trim();
+    const stageRaw = (col.stage >= 0 ? (cells[col.stage] || "") : "").trim();
+
+    if (!homeRaw && !awayRaw && !kickRaw) continue; // blank line
+
+    const home = canonicalTeam(homeRaw);
+    const away = canonicalTeam(awayRaw);
+    const kickoff = normaliseKickoffStr(kickRaw);
+    let stage = stageRaw ? (stageRaw.toLowerCase().startsWith("knock") ? "Knockout" : "Group") : "Group";
+
+    const rowErrors = [];
+    if (!home) rowErrors.push("missing home team");
+    else if (!validNames.has(home.toLowerCase())) rowErrors.push(`unknown home team "${homeRaw}"`);
+    if (!away) rowErrors.push("missing away team");
+    else if (!validNames.has(away.toLowerCase())) rowErrors.push(`unknown away team "${awayRaw}"`);
+    if (home && away && home === away) rowErrors.push("home and away are the same");
+    if (!kickRaw) rowErrors.push("missing kickoff");
+    else if (!kickoff) rowErrors.push(`bad kickoff format "${kickRaw}" (use YYYY-MM-DD HH:MM)`);
+
+    if (rowErrors.length) {
+      errors.push(`Row ${lineNo}: ${rowErrors.join("; ")}`);
+    } else {
+      rows.push({ home, away, kickoff, stage, kickoffUtcMs: aestLocalToUtcMs(kickoff) });
+    }
+  }
+  return { rows, errors };
+}
+
+function renderCsvPreview(rows, errors) {
+  const box = document.getElementById("csvPreview");
+  box.classList.remove("hidden");
+  csvParsedRows = rows.length ? rows : null;
+
+  const errHtml = errors.length ? `
+    <div class="bg-red-950/40 border border-red-700/50 rounded-lg p-3 mb-3">
+      <div class="text-red-300 font-bold text-sm mb-1">${errors.length} row${errors.length>1?"s":""} skipped:</div>
+      <ul class="text-red-400/90 text-xs space-y-0.5 max-h-40 overflow-y-auto">
+        ${errors.map(e => `<li>• ${escapeHtml(e)}</li>`).join("")}
+      </ul>
+    </div>` : "";
+
+  const tableHtml = rows.length ? `
+    <div class="overflow-x-auto rounded-lg border border-slate-700">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-slate-800/60 text-slate-400 text-left">
+          <th class="py-2 px-3">#</th><th class="py-2 px-3">Home</th><th class="py-2 px-3">Away</th>
+          <th class="py-2 px-3">Kickoff (AEST)</th><th class="py-2 px-3">Stage</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((r,i) => `
+            <tr class="border-t border-slate-800">
+              <td class="py-1.5 px-3 text-slate-500">${i+1}</td>
+              <td class="py-1.5 px-3">${escapeHtml(r.home)}</td>
+              <td class="py-1.5 px-3">${escapeHtml(r.away)}</td>
+              <td class="py-1.5 px-3 text-slate-300">${escapeHtml(fmtAEST(r.kickoffUtcMs))}</td>
+              <td class="py-1.5 px-3"><span class="px-2 py-0.5 rounded-full text-xs ${r.stage==='Knockout'?'badge-knockout':'badge-group'}">${r.stage}</span></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <div class="flex items-center justify-between gap-3 mt-3 flex-wrap">
+      <div class="text-xs text-slate-400">${rows.length} valid match${rows.length>1?"es":""} ready to import.</div>
+      <button id="csvImportBtn" class="bg-green-600 hover:bg-green-500 px-5 py-2.5 rounded-lg font-bold text-sm transition">✓ Import ${rows.length} match${rows.length>1?"es":""}</button>
+    </div>` : `<div class="text-slate-500 text-sm">No valid rows to import.</div>`;
+
+  box.innerHTML = errHtml + tableHtml;
+
+  const importBtn = document.getElementById("csvImportBtn");
+  if (importBtn) importBtn.addEventListener("click", importCsvMatches);
+}
+
+async function importCsvMatches() {
+  if (!csvParsedRows || !csvParsedRows.length) return;
+  const btn = document.getElementById("csvImportBtn");
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = "Importing…";
+  let ok = 0, fail = 0;
+  for (const r of csvParsedRows) {
+    try {
+      await addDoc(collection(db,"matches"), {
+        home: r.home, away: r.away, stage: r.stage,
+        kickoffUtcMs: r.kickoffUtcMs, kickoffAEST: r.kickoff, createdAt: Date.now()
+      });
+      ok++;
+    } catch(e) { console.warn("CSV import row failed:", e.message); fail++; }
+  }
+  btn.textContent = orig; btn.disabled = false;
+  document.getElementById("csvPreview").classList.add("hidden");
+  document.getElementById("csvFileInput").value = "";
+  csvParsedRows = null;
+  renderMatches();
+  alert(`Imported ${ok} match${ok!==1?"es":""}.${fail?` ${fail} failed — see console.`:""}`);
+}
+
+// Wire CSV controls
+(function setupCsvImport(){
+  const previewBtn = document.getElementById("csvPreviewBtn");
+  const fileInput  = document.getElementById("csvFileInput");
+  const tmplBtn    = document.getElementById("downloadCsvTemplate");
+
+  function doPreview() {
+    const file = fileInput.files?.[0];
+    if (!file) { alert("Choose a CSV file first."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const { rows, errors } = parseMatchesCsv(String(reader.result || ""));
+      renderCsvPreview(rows, errors);
+    };
+    reader.onerror = () => alert("Couldn't read that file.");
+    reader.readAsText(file);
+  }
+  if (previewBtn) previewBtn.addEventListener("click", doPreview);
+  if (fileInput)  fileInput.addEventListener("change", doPreview);
+
+  if (tmplBtn) tmplBtn.addEventListener("click", () => {
+    const sample = [
+      "home,away,kickoff,stage",
+      "Brazil,Morocco,2026-06-27 22:00,Group",
+      "France,Senegal,2026-06-28 02:00,Group",
+      "Spain,Uruguay,2026-06-29 05:00,Knockout"
+    ].join("\n");
+    const blob = new Blob([sample], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "wc2026-matches-template.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
 
 // ── LOCK ──────────────────────────────────────────────────────
 async function updateLockLabel() {
