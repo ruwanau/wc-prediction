@@ -222,6 +222,7 @@
 </script>
   
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
     :root {
@@ -361,6 +362,10 @@
     .pred-status-todo   { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
     .pred-status-unsaved{ background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); }
     .pred-status-locked { background: rgba(100,116,139,0.12); color: #64748b; border: 1px solid rgba(100,116,139,0.3); }
+    /* ── Charts tab ── */
+    .chart-box { position: relative; width: 100%; height: 300px; }
+    .chart-box-tall { height: 380px; }
+
     /* Subtle green edge on cards that have a saved prediction */
     [data-pred-card].card-predicted { border-color: rgba(34,197,94,0.35); }
 
@@ -740,6 +745,7 @@
           <div class="nav-group">
             <span class="nav-group-label">Info</span>
             <div class="nav-group-btns">
+              <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="chartsTab">📊 Charts</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="reportsTab">📈 Reports</button>
               <button class="tab-btn px-3.5 py-2 rounded-lg bg-slate-800 text-sm" data-tab="rulesTab">📘 Rules</button>
             </div>
@@ -1097,6 +1103,67 @@
         <div id="noLeaderboardMsg" class="hidden text-center text-slate-500 py-10">No predictions yet.</div>
       </div>
     </div>
+  </section>
+
+  <!-- CHARTS TAB -->
+  <section id="chartsTab" class="tab-content hidden space-y-5">
+
+    <div class="glass rounded-2xl p-6">
+      <h2 class="display-font text-3xl text-yellow-400 mb-1">Charts &amp; Insights</h2>
+      <p class="text-slate-400 text-sm">Visual breakdown of the standings, scoring, and accuracy across all players and matches.</p>
+    </div>
+
+    <!-- Headline stat cards -->
+    <div id="chartStatCards" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+    <div id="chartsEmpty" class="hidden glass rounded-2xl p-10 text-center">
+      <div class="text-5xl mb-3">📊</div>
+      <div class="text-slate-300 text-lg">Not enough data yet.</div>
+      <div class="text-slate-500 text-sm mt-1">Charts appear once players have made predictions and results start coming in.</div>
+    </div>
+
+    <div id="chartsGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">🏆 Points Race</h3>
+        <div class="chart-box"><canvas id="chartPointsRace"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">🧩 Points Breakdown</h3>
+        <p class="text-slate-500 text-xs mb-3">Match points vs. tournament bonus per player.</p>
+        <div class="chart-box"><canvas id="chartPointsStack"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">🎯 Pick Outcomes</h3>
+        <p class="text-slate-500 text-xs mb-3">How each player's resolved picks landed.</p>
+        <div class="chart-box"><canvas id="chartOutcomes"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">📈 Accuracy vs. Volume</h3>
+        <p class="text-slate-500 text-xs mb-3">Correct-result accuracy against number of games predicted.</p>
+        <div class="chart-box"><canvas id="chartAccuracy"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5 lg:col-span-2">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">⏱️ Cumulative Points by Matchday</h3>
+        <p class="text-slate-500 text-xs mb-3">How the race has evolved as results came in.</p>
+        <div class="chart-box chart-box-tall"><canvas id="chartCumulative"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">⚽ Result Types</h3>
+        <p class="text-slate-500 text-xs mb-3">Home win / draw / away win across completed matches.</p>
+        <div class="chart-box"><canvas id="chartResultTypes"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">🥅 Goals per Match</h3>
+        <p class="text-slate-500 text-xs mb-3">Total goals in each completed match.</p>
+        <div class="chart-box"><canvas id="chartGoals"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5 lg:col-span-2">
+        <h3 class="display-font text-xl text-yellow-400 mb-3">👑 Champion Picks</h3>
+        <p class="text-slate-500 text-xs mb-3">Which nations players backed to win it all (1st choice).</p>
+        <div class="chart-box"><canvas id="chartChampions"></canvas></div>
+      </div>
+    </div>
+
   </section>
 
   <!-- REPORTS TAB -->
@@ -2436,16 +2503,17 @@ async function renderMatches() {
           </div>
           <span class="text-xs text-slate-400">📅 ${fmtLocal(m.kickoffUtcMs)}</span>
         </div>
-        <div class="flex items-center justify-between gap-2 sm:gap-4">
-          <div class="flex-1 min-w-0 text-right"><div class="text-lg sm:text-xl font-bold break-words leading-tight">${m.home}</div></div>
-          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <input type="number" min="0" ${locked?"disabled":""} id="home-${m.id}"
-              class="score-input w-14 h-14 sm:w-16 sm:h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-xl sm:text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
-            <div class="display-font text-2xl text-yellow-400">:</div>
-            <input type="number" min="0" ${locked?"disabled":""} id="away-${m.id}"
-              class="score-input w-14 h-14 sm:w-16 sm:h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-xl sm:text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+        <div class="text-center mb-4">
+          <div class="text-base sm:text-lg font-bold leading-tight break-words">
+            ${m.home} <span class="text-slate-500 font-normal">vs</span> ${m.away}
           </div>
-          <div class="flex-1 min-w-0"><div class="text-lg sm:text-xl font-bold break-words leading-tight">${m.away}</div></div>
+        </div>
+        <div class="flex items-center justify-center gap-3">
+          <input type="number" min="0" ${locked?"disabled":""} id="home-${m.id}"
+            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
+          <div class="display-font text-2xl text-yellow-400">:</div>
+          <input type="number" min="0" ${locked?"disabled":""} id="away-${m.id}"
+            class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
         </div>
         ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
           Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}</div>` : ""}
@@ -2548,8 +2616,9 @@ async function renderMatches() {
     });
   });
 
-  // ── Admin cards (flat list, not grouped) ──
-  ascMatches.forEach(m => {
+  // ── Admin cards (flat list, not grouped) — newest kickoff first ──
+  const adminMatches = [...matches].sort((a,b) => (b.kickoffUtcMs||0) - (a.kickoffUtcMs||0));
+  adminMatches.forEach(m => {
     const actual    = results[m.id];
     // Admin card
     const started = m.kickoffUtcMs && Date.now() >= m.kickoffUtcMs;
@@ -3837,6 +3906,355 @@ function setupReportsTab() {
 setupReportsTab();
 
 // ══════════════════════════════════════════════════════════════
+// CHARTS TAB — visual insights (Chart.js)
+// ══════════════════════════════════════════════════════════════
+let chartInstances = {};            // canvasId → Chart instance (destroyed on re-render)
+const CHART_PALETTE = [
+  "#f5c842","#22c55e","#3b82f6","#ef4444","#a855f7","#f97316",
+  "#06b6d4","#ec4899","#84cc16","#eab308","#14b8a6","#8b5cf6",
+  "#f43f5e","#10b981","#6366f1","#fb923c","#0ea5e9","#d946ef"
+];
+const colorFor = i => CHART_PALETTE[i % CHART_PALETTE.length];
+
+// Shared Chart.js theming for the dark UI
+function chartBaseOptions(extra = {}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: "#cbd5e1", font: { size: 11 } } },
+      tooltip: {
+        backgroundColor: "rgba(2,8,23,0.95)",
+        borderColor: "rgba(245,200,66,0.3)", borderWidth: 1,
+        titleColor: "#f5c842", bodyColor: "#e2e8f0", padding: 10
+      },
+      ...(extra.plugins || {})
+    },
+    scales: extra.scales,
+    ...(extra.rest || {})
+  };
+}
+const GRID = "rgba(255,255,255,0.06)";
+const TICK = "#94a3b8";
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+function makeChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el || typeof Chart === "undefined") return;
+  destroyChart(id);
+  chartInstances[id] = new Chart(el.getContext("2d"), config);
+}
+
+// Build the full dataset the charts need (mirrors leaderboard scoring exactly).
+async function buildChartData() {
+  const [matches, results, predSnap] = await Promise.all([
+    getMatches(), getResults(), getDocs(collection(db,"predictions"))
+  ]);
+  let tPicks = {}, tResult = { champion:"", topScorer:"" };
+  try { tPicks = await getAllTournamentPicks(); } catch(_){}
+  try { tResult = await getTournamentResult(); } catch(_){}
+
+  const champion  = (tResult.champion  || "").trim().toLowerCase();
+  const topScorer = (tResult.topScorer || "").trim().toLowerCase();
+
+  const predByUid = {};
+  predSnap.forEach(ds => predByUid[ds.id] = ds.data());
+  const allUids = new Set([...Object.keys(predByUid), ...Object.keys(tPicks)]);
+
+  // Completed matches sorted chronologically (for cumulative line)
+  const completed = matches
+    .filter(m => results[m.id] && results[m.id].home !== undefined)
+    .sort((a,b) => (a.kickoffUtcMs||0) - (b.kickoffUtcMs||0));
+
+  const players = [];
+  allUids.forEach(uid => {
+    const data = predByUid[uid] || {};
+    const tp   = tPicks[uid] || {};
+    const name = data.user || tp.user || "Unknown";
+    const preds = data.predictions || {};
+
+    let matchPts = 0, exact = 0, correctOnly = 0, wrong = 0, decided = 0, noPick = 0;
+    // Cumulative points aligned to the completed-match order
+    const cumulative = [];
+    let running = 0;
+    completed.forEach(m => {
+      const pred = preds[m.id];
+      const act  = results[m.id];
+      const hasPred = pred && Number.isInteger(pred.home) && Number.isInteger(pred.away);
+      const mul = m.stage === "Knockout" ? 1.5 : 1;
+      if (!hasPred) { noPick++; cumulative.push(running); return; }
+      decided++;
+      const isExact = pred.home === act.home && pred.away === act.away;
+      const isOutcome = getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away);
+      if (isExact) { exact++; running += 3*mul; }
+      else if (isOutcome) { correctOnly++; running += 1*mul; }
+      else { wrong++; }
+      cumulative.push(running);
+    });
+    matchPts = running;
+
+    // Tournament bonus
+    let bonusPts = 0;
+    if (champion) {
+      if ((tp.champion1||"").trim().toLowerCase() === champion) bonusPts += POINTS_CHAMPION_1;
+      else if ((tp.champion2||"").trim().toLowerCase() === champion) bonusPts += POINTS_CHAMPION_2;
+      else if ((tp.champion3||"").trim().toLowerCase() === champion) bonusPts += POINTS_CHAMPION_3;
+    }
+    if (topScorer && (tp.topScorer||"").trim().toLowerCase() === topScorer) bonusPts += POINTS_TOP_SCORER;
+
+    const totalCorrect = exact + correctOnly;
+    const accuracy = decided > 0 ? (totalCorrect / decided) * 100 : null;
+
+    players.push({
+      uid, name,
+      matchPts, bonusPts, total: matchPts + bonusPts,
+      exact, correctOnly, wrong, noPick, decided,
+      accuracy, cumulative,
+      champion1: tp.champion1 || ""
+    });
+  });
+
+  players.sort((a,b) => b.total - a.total || a.name.localeCompare(b.name));
+  return { players, completed, results, matches };
+}
+
+async function renderChartsTab() {
+  if (typeof Chart === "undefined") {
+    document.getElementById("chartsEmpty").classList.remove("hidden");
+    document.getElementById("chartsEmpty").innerHTML =
+      `<div class="text-5xl mb-3">📊</div><div class="text-slate-300 text-lg">Charts library still loading…</div><div class="text-slate-500 text-sm mt-1">Give it a second and switch tabs again.</div>`;
+    return;
+  }
+  Chart.defaults.color = TICK;
+  Chart.defaults.font.family = "DM Sans, sans-serif";
+
+  const { players, completed, results } = await buildChartData();
+
+  const grid  = document.getElementById("chartsGrid");
+  const empty = document.getElementById("chartsEmpty");
+  const cards = document.getElementById("chartStatCards");
+
+  if (!players.length) {
+    grid.classList.add("hidden");
+    empty.classList.remove("hidden");
+    cards.innerHTML = "";
+    return;
+  }
+  grid.classList.remove("hidden");
+  empty.classList.add("hidden");
+
+  // ── Headline stat cards ──
+  const leader = players[0];
+  const totalGoals = completed.reduce((s,m) => s + (results[m.id].home + results[m.id].away), 0);
+  const avgGoals = completed.length ? (totalGoals / completed.length).toFixed(2) : "—";
+  const bestAcc = players.filter(p => p.decided >= 1).sort((a,b) => (b.accuracy||0)-(a.accuracy||0))[0];
+  const totalExact = players.reduce((s,p) => s + p.exact, 0);
+  cards.innerHTML = `
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Leader</div>
+      <div class="display-font text-xl text-yellow-400 truncate">${escapeHtml(leader.name)}</div>
+      <div class="text-xs text-slate-500">${leader.total%1===0?leader.total:leader.total.toFixed(1)} pts</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Matches Played</div>
+      <div class="display-font text-2xl text-yellow-400">${completed.length}</div>
+      <div class="text-xs text-slate-500">${avgGoals} goals/match avg</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Best Accuracy</div>
+      <div class="display-font text-xl text-yellow-400 truncate">${bestAcc ? escapeHtml(bestAcc.name) : "—"}</div>
+      <div class="text-xs text-slate-500">${bestAcc && bestAcc.accuracy!==null ? Math.round(bestAcc.accuracy)+"%" : "—"}</div>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <div class="text-xs text-slate-400 uppercase tracking-widest">Exact Scores</div>
+      <div class="display-font text-2xl text-yellow-400">${totalExact}</div>
+      <div class="text-xs text-slate-500">across all players</div>
+    </div>`;
+
+  const names = players.map(p => p.name);
+
+  // ── 1. Points Race (horizontal bar) ──
+  makeChart("chartPointsRace", {
+    type: "bar",
+    data: {
+      labels: names,
+      datasets: [{
+        label: "Total points",
+        data: players.map(p => p.total),
+        backgroundColor: players.map((_,i) => colorFor(i)),
+        borderRadius: 6
+      }]
+    },
+    options: chartBaseOptions({
+      rest: { indexAxis: "y" },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK } },
+        y: { grid: { display: false }, ticks: { color: TICK } }
+      }
+    })
+  });
+
+  // ── 2. Points Breakdown (stacked: match vs bonus) ──
+  makeChart("chartPointsStack", {
+    type: "bar",
+    data: {
+      labels: names,
+      datasets: [
+        { label: "Match points", data: players.map(p => p.matchPts), backgroundColor: "#f5c842", borderRadius: 4 },
+        { label: "Bonus points", data: players.map(p => p.bonusPts), backgroundColor: "#a855f7", borderRadius: 4 }
+      ]
+    },
+    options: chartBaseOptions({
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: TICK, maxRotation: 45, minRotation: 0 } },
+        y: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK } }
+      }
+    })
+  });
+
+  // ── 3. Pick Outcomes (stacked: exact / correct / wrong / no pick) ──
+  makeChart("chartOutcomes", {
+    type: "bar",
+    data: {
+      labels: names,
+      datasets: [
+        { label: "🎯 Exact",   data: players.map(p => p.exact),       backgroundColor: "#22c55e", borderRadius: 3 },
+        { label: "✅ Correct", data: players.map(p => p.correctOnly), backgroundColor: "#eab308", borderRadius: 3 },
+        { label: "❌ Wrong",   data: players.map(p => p.wrong),       backgroundColor: "#ef4444", borderRadius: 3 },
+        { label: "— No pick",  data: players.map(p => p.noPick),      backgroundColor: "#475569", borderRadius: 3 }
+      ]
+    },
+    options: chartBaseOptions({
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { color: TICK, maxRotation: 45 } },
+        y: { stacked: true, beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, precision: 0 } }
+      }
+    })
+  });
+
+  // ── 4. Accuracy vs Volume (scatter) ──
+  const scatterPts = players.filter(p => p.decided >= 1).map((p,i) => ({
+    x: p.decided, y: Math.round(p.accuracy), label: p.name
+  }));
+  makeChart("chartAccuracy", {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Players",
+        data: scatterPts,
+        backgroundColor: scatterPts.map((_,i) => colorFor(i)),
+        pointRadius: 7, pointHoverRadius: 10
+      }]
+    },
+    options: chartBaseOptions({
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => `${c.raw.label}: ${c.raw.y}% over ${c.raw.x} games` } }
+      },
+      scales: {
+        x: { title: { display: true, text: "Games predicted", color: TICK }, beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, precision: 0 } },
+        y: { title: { display: true, text: "Accuracy %", color: TICK }, min: 0, max: 100, grid: { color: GRID }, ticks: { color: TICK } }
+      }
+    })
+  });
+
+  // ── 5. Cumulative points by matchday (line) ──
+  const cumLabels = completed.map((m,i) => `${i+1}`);
+  makeChart("chartCumulative", {
+    type: "line",
+    data: {
+      labels: cumLabels,
+      datasets: players.slice(0, 12).map((p,i) => ({
+        label: p.name,
+        data: p.cumulative,
+        borderColor: colorFor(i),
+        backgroundColor: colorFor(i),
+        borderWidth: 2, tension: 0.25, pointRadius: 2, pointHoverRadius: 5
+      }))
+    },
+    options: chartBaseOptions({
+      plugins: { legend: { labels: { color: "#cbd5e1", font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { title: { display: true, text: "Completed match #", color: TICK }, grid: { color: GRID }, ticks: { color: TICK } },
+        y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK } }
+      }
+    })
+  });
+
+  // ── 6. Result types (doughnut) ──
+  let homeW = 0, draw = 0, awayW = 0;
+  completed.forEach(m => {
+    const r = results[m.id];
+    const o = getOutcome(r.home, r.away);
+    if (o === "HOME") homeW++; else if (o === "AWAY") awayW++; else draw++;
+  });
+  makeChart("chartResultTypes", {
+    type: "doughnut",
+    data: {
+      labels: ["Home win","Draw","Away win"],
+      datasets: [{ data: [homeW, draw, awayW], backgroundColor: ["#22c55e","#94a3b8","#f59e0b"], borderColor: "rgba(2,8,23,0.6)", borderWidth: 2 }]
+    },
+    options: chartBaseOptions({ rest: { cutout: "60%" } })
+  });
+
+  // ── 7. Goals per match (bar) ──
+  makeChart("chartGoals", {
+    type: "bar",
+    data: {
+      labels: completed.map(m => `${(m.home||"").slice(0,3).toUpperCase()}-${(m.away||"").slice(0,3).toUpperCase()}`),
+      datasets: [{
+        label: "Total goals",
+        data: completed.map(m => results[m.id].home + results[m.id].away),
+        backgroundColor: "#06b6d4", borderRadius: 4
+      }]
+    },
+    options: chartBaseOptions({
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { title: items => { const m = completed[items[0].dataIndex]; return `${m.home} vs ${m.away}`; },
+          label: c => { const m = completed[c.dataIndex]; const r = results[m.id]; return `${r.home}–${r.away} (${r.home+r.away} goals)`; } } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: TICK, maxRotation: 90, minRotation: 45, font: { size: 9 } } },
+        y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, precision: 0 } }
+      }
+    })
+  });
+
+  // ── 8. Champion picks (bar of 1st-choice nations) ──
+  const champCounts = {};
+  players.forEach(p => { const c = (p.champion1||"").trim(); if (c) champCounts[c] = (champCounts[c]||0)+1; });
+  const champEntries = Object.entries(champCounts).sort((a,b) => b[1]-a[1]);
+  makeChart("chartChampions", {
+    type: "bar",
+    data: {
+      labels: champEntries.map(e => e[0]),
+      datasets: [{
+        label: "Backers (1st choice)",
+        data: champEntries.map(e => e[1]),
+        backgroundColor: champEntries.map((_,i) => colorFor(i)),
+        borderRadius: 5
+      }]
+    },
+    options: chartBaseOptions({
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: TICK, maxRotation: 45 } },
+        y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, precision: 0 } }
+      }
+    })
+  });
+}
+
+function refreshChartsIfActive() {
+  const active = document.querySelector(".tab-content:not(.hidden)");
+  if (active?.id === "chartsTab") renderChartsTab();
+}
+
+// ══════════════════════════════════════════════════════════════
 // BRACKET PREDICTOR (group winners → knockout → cup)
 // Non-scored, prediction-only. Stored in Firestore collection bracketPicks.
 // ══════════════════════════════════════════════════════════════
@@ -4930,6 +5348,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     if (tab==="resultsTab")     renderResultsTab();
     if (tab==="leaderboardTab") calculateLeaderboard();
     if (tab==="reportsTab")     renderReportsTab();
+    if (tab==="chartsTab")      renderChartsTab();
     if (tab==="adminTab")       { if(adminUnlocked) { renderMatches(); setupAdminTournamentControls(); } }
   });
 });
@@ -4987,9 +5406,9 @@ setInterval(() => {
 }, 60000);
 
 // ── REALTIME ──────────────────────────────────────────────────
-onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); refreshTournamentIfActive(); refreshReportsIfActive(); });
-onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); refreshReportsIfActive(); });
-onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); refreshReportsIfActive(); });
+onSnapshot(collection(db,"matches"),     () => { renderMatches(); calculateLeaderboard(); refreshTournamentIfActive(); refreshReportsIfActive(); refreshChartsIfActive(); });
+onSnapshot(collection(db,"predictions"), () => { calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); refreshReportsIfActive(); refreshChartsIfActive(); });
+onSnapshot(collection(db,"results"),     () => { renderMatches(); renderResultsTab(); calculateLeaderboard(); renderAllPicksIfActive(); refreshTournamentIfActive(); refreshReportsIfActive(); refreshChartsIfActive(); });
 
 // Tournament listeners — guarded so a permission denial doesn't break the page
 try {
