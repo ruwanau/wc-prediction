@@ -362,6 +362,11 @@
     .pred-status-todo   { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
     .pred-status-unsaved{ background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); }
     .pred-status-locked { background: rgba(100,116,139,0.12); color: #64748b; border: 1px solid rgba(100,116,139,0.3); }
+    /* ── Who-advances selector (knockout) ── */
+    .adv-btn { background: rgba(15,23,42,0.7); color: #cbd5e1; }
+    .adv-btn:hover:not(:disabled) { background: rgba(245,200,66,0.1); color: #fde68a; }
+    .adv-btn.adv-selected { background: var(--gold); color: #000; font-weight: 700; }
+
     /* ── Charts tab ── */
     .chart-box { position: relative; width: 100%; height: 300px; }
     .chart-box-tall { height: 380px; }
@@ -1284,6 +1289,18 @@
         </div>
       </div>
 
+      <div class="mt-4 bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 flex gap-3 items-start">
+        <span class="text-xl">🏆</span>
+        <div>
+          <div class="font-bold text-purple-300 text-sm">Knockout matches: score after extra time + who advances</div>
+          <div class="text-slate-300 text-sm mt-0.5">
+            Knockout scores are judged on the result <strong>after extra time</strong>. Penalty shootouts do <strong>not</strong> count — a game level after extra time is scored as a draw.
+            You must also pick <strong>which team advances</strong>. A correct advances pick earns <strong class="text-purple-200">+1.5 points</strong> (the knockout ×1.5 applied to 1 point) and <strong>stacks</strong> on top of your scoreline points.
+          </div>
+          <div class="text-slate-500 text-xs mt-2">Example: predict the exact after-ET score <em>and</em> the right team to advance → 3 × 1.5 + 1.5 = <strong class="text-slate-300">6 points</strong>. The advances pick also counts toward your Accuracy %.</div>
+        </div>
+      </div>
+
       <div class="mt-6 pt-6 border-t border-white/10">
         <h3 class="display-font text-2xl text-yellow-400 mb-4">Tournament Bonuses</h3>
         <p class="text-slate-400 text-sm mb-4">Long-shot picks that earn big bonus points if you call them right. <strong class="text-yellow-300">Locked on 29 Jun 2026, 5:00 AM AEST — no changes after that.</strong></p>
@@ -1646,7 +1663,9 @@ const adminVerifyAuth = getAuth(adminVerifyApp);
 
 let currentUser   = null;
 let adminUnlocked = false;  // set to true once admin credentials verified this session
-let myPredictionsCache = {}; // uid's last-saved predictions, keyed by matchId → {home,away}
+let myPredictionsCache = {}; // uid's last-saved predictions, keyed by matchId → {home,away,advances}
+let advancesDraft = {};      // matchId → team currently selected in the UI (knockout)
+let knockoutMatchIds = new Set(); // ids of knockout-stage matches (for required advances pick)
 
 function isAdmin() {
   return adminUnlocked;
@@ -2302,19 +2321,26 @@ async function loadMyPredictions() {
 }
 
 // Does the cache hold a complete saved prediction for this match?
+// Knockout matches also require a saved "advances" team.
 function isMatchPredicted(mid) {
   const p = myPredictionsCache[mid];
-  return !!(p && Number.isInteger(p.home) && Number.isInteger(p.away));
+  if (!p || !Number.isInteger(p.home) || !Number.isInteger(p.away)) return false;
+  if (knockoutMatchIds.has(mid) && !p.advances) return false;
+  return true;
 }
 
-// Are the two input boxes for this match currently both filled?
+// Are the inputs for this match currently complete?
+// Knockout cards also need an advances selection.
 function inputsFilled(mid) {
   const h = document.getElementById(`home-${mid}`);
   const a = document.getElementById(`away-${mid}`);
-  return !!(h && a && h.value !== "" && a.value !== "");
+  const scoresFilled = !!(h && a && h.value !== "" && a.value !== "");
+  if (!scoresFilled) return false;
+  if (knockoutMatchIds.has(mid) && !advancesDraft[mid]) return false;
+  return true;
 }
 
-// Has the user typed something different from what's saved (unsaved changes)?
+// Has the user changed something vs what's saved (unsaved changes)?
 function inputsDifferFromSaved(mid) {
   const h = document.getElementById(`home-${mid}`);
   const a = document.getElementById(`away-${mid}`);
@@ -2322,7 +2348,9 @@ function inputsDifferFromSaved(mid) {
   const saved = myPredictionsCache[mid] || {};
   const sh = Number.isInteger(saved.home) ? String(saved.home) : "";
   const sa = Number.isInteger(saved.away) ? String(saved.away) : "";
-  return h.value !== sh || a.value !== sa;
+  if (h.value !== sh || a.value !== sa) return true;
+  if (knockoutMatchIds.has(mid) && (advancesDraft[mid] || "") !== (saved.advances || "")) return true;
+  return false;
 }
 
 // Update one card's status pill + per-card save button label.
@@ -2383,7 +2411,7 @@ function updatePredictionSummary() {
 }
 
 // Save a single match's prediction (merges into the existing predictions doc).
-// Returns "saved" | "cleared" | "locked" | "empty" | "error".
+// Returns "saved" | "cleared" | "locked" | "empty" | "need-advances" | "error".
 async function saveSinglePrediction(mid) {
   if (!currentUser) { alert("Please sign in first."); return "error"; }
   const globalLocked = await getLocked();
@@ -2395,6 +2423,11 @@ async function saveSinglePrediction(mid) {
   const hv = document.getElementById(`home-${mid}`)?.value;
   const av = document.getElementById(`away-${mid}`)?.value;
   const bothFilled = hv !== "" && av !== "" && hv != null && av != null;
+  const isKnockout = m.stage === "Knockout";
+  const advances = advancesDraft[mid] || null;
+
+  // Knockout picks REQUIRE an advancing team alongside a score.
+  if (bothFilled && isKnockout && !advances) return "need-advances";
 
   // Load existing predictions to merge
   let existing = {};
@@ -2408,7 +2441,9 @@ async function saveSinglePrediction(mid) {
     if (existing[mid] === undefined) return "empty";
     delete existing[mid];
   } else {
-    existing[mid] = { home: Number(hv), away: Number(av) };
+    const entry = { home: Number(hv), away: Number(av) };
+    if (isKnockout) entry.advances = advances;
+    existing[mid] = entry;
   }
 
   // Resolve display name
@@ -2480,6 +2515,9 @@ async function renderMatches() {
   const adm   = document.getElementById("adminMatches");
   con.innerHTML = ""; adm.innerHTML = "";
 
+  // Track which matches are knockout (needed for the required "advances" pick)
+  knockoutMatchIds = new Set(matches.filter(m => m.stage === "Knockout").map(m => m.id));
+
   document.getElementById("lockBanner").classList.toggle("hidden", !globalLocked);
 
   // Soon-locking banners
@@ -2535,8 +2573,16 @@ async function renderMatches() {
           <input type="number" min="0" ${locked?"disabled":""} id="away-${m.id}"
             class="score-input w-16 h-16 text-center rounded-xl bg-slate-900 border border-slate-700 text-2xl focus:outline-none focus:border-yellow-500 transition disabled:opacity-40 disabled:cursor-not-allowed" />
         </div>
+        ${m.stage === "Knockout" ? `
+        <div class="mt-4 text-center" data-advances-wrap="${m.id}">
+          <div class="text-xs text-slate-400 mb-1.5">Who advances? <span class="text-slate-600">(score is judged after extra time)</span></div>
+          <div class="inline-flex rounded-xl overflow-hidden border border-slate-700">
+            <button type="button" ${locked?"disabled":""} class="adv-btn px-3 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed" data-id="${m.id}" data-team="${escapeHtml(m.home)}">${escapeHtml(m.home)}</button>
+            <button type="button" ${locked?"disabled":""} class="adv-btn px-3 py-2 text-sm font-medium transition border-l border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" data-id="${m.id}" data-team="${escapeHtml(m.away)}">${escapeHtml(m.away)}</button>
+          </div>
+        </div>` : ""}
         ${hasResult ? `<div class="mt-4 bg-green-900/20 border border-green-500/20 rounded-xl p-2.5 text-center text-sm text-green-400">
-          Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}</div>` : ""}
+          Final: ${m.home} ${actual.home} – ${actual.away} ${m.away}${actual.advancedTeam ? `<div class="text-xs text-green-300/80 mt-0.5">${escapeHtml(actual.advancedTeam)} advanced</div>` : ""}</div>` : ""}
         ${!locked ? `
         <div class="flex items-center justify-between gap-3 mt-4">
           <span id="status-${m.id}" data-locked="0" class="pred-status pred-status-todo">○ Not predicted</span>
@@ -2661,6 +2707,16 @@ async function renderMatches() {
           <button class="del-result-btn bg-slate-700 hover:bg-red-700 border border-slate-600 hover:border-red-600 px-3 py-2 rounded-lg text-sm transition" title="Delete result" data-id="${m.id}">🗑</button>
         </div>
       </div>
+      ${m.stage === "Knockout" ? `
+      <div class="mt-3 pt-3 border-t border-white/5 flex flex-col sm:flex-row sm:items-center gap-2">
+        <label class="text-xs text-slate-400 whitespace-nowrap">Advanced (after ET):</label>
+        <select id="advanced-${m.id}" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500 transition">
+          <option value="">— Select —</option>
+          <option value="${escapeHtml(m.home)}" ${actual?.advancedTeam===m.home?"selected":""}>${escapeHtml(m.home)}</option>
+          <option value="${escapeHtml(m.away)}" ${actual?.advancedTeam===m.away?"selected":""}>${escapeHtml(m.away)}</option>
+        </select>
+        <span class="text-xs text-slate-600">Needed for the "who advances" bonus.</span>
+      </div>` : ""}
       ${!started ? `
       <div id="edit-time-panel-${m.id}" class="hidden mt-3 pt-3 border-t border-white/5 flex flex-col sm:flex-row sm:items-center gap-3">
         <label class="text-xs text-slate-400 whitespace-nowrap">New kickoff (AEST):</label>
@@ -2690,6 +2746,7 @@ async function renderMatches() {
       if (res === "saved")        btn.innerHTML = "Saved ✓";
       else if (res === "cleared") btn.innerHTML = "Cleared";
       else if (res === "empty")   { btn.innerHTML = "Enter a score"; }
+      else if (res === "need-advances") { btn.innerHTML = "Pick who advances"; }
       else if (res === "locked")  { btn.innerHTML = "Locked 🔒"; }
       else                        { btn.innerHTML = "Error"; }
       setTimeout(()=>{
@@ -2709,6 +2766,22 @@ async function renderMatches() {
     });
   });
 
+  // Knockout "who advances" buttons: seed draft from saved pick, then wire clicks
+  advancesDraft = {};
+  Object.entries(myPredictionsCache).forEach(([mid,p]) => {
+    if (p && p.advances) advancesDraft[mid] = p.advances;
+  });
+  document.querySelectorAll(".adv-btn").forEach(btn => {
+    const id = btn.dataset.id, team = btn.dataset.team;
+    if (advancesDraft[id] === team) btn.classList.add("adv-selected");
+    btn.addEventListener("click", () => {
+      advancesDraft[id] = team;
+      document.querySelectorAll(`.adv-btn[data-id="${id}"]`).forEach(b =>
+        b.classList.toggle("adv-selected", b.dataset.team === team));
+      updateCardStatus(id);
+    });
+  });
+
   // Save result — lock the inputs + button until the write completes
   document.querySelectorAll(".save-result-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -2718,11 +2791,21 @@ async function renderMatches() {
       const h = homeInp.value, a = awayInp.value;
       if (h===""||a==="") { alert("Enter both scores."); return; }
 
+      // Knockout matches: capture who advanced (after extra time), if provided.
+      const advSel = document.getElementById(`advanced-${id}`);
+      const advancedTeam = advSel ? advSel.value : "";
+      const isKnockout = knockoutMatchIds.has(id);
+
+      // Build the result doc; only knockout matches carry advancedTeam.
+      const resultDoc = { home: Number(h), away: Number(a) };
+      if (isKnockout && advancedTeam) resultDoc.advancedTeam = advancedTeam;
+
       // Please-wait: prevent further entry until this save finishes
       btn.disabled = true; homeInp.disabled = true; awayInp.disabled = true;
+      if (advSel) advSel.disabled = true;
       const orig = btn.textContent; btn.textContent = "Saving…";
       try {
-        await setDoc(doc(db,"results",id),{home:Number(h),away:Number(a)});
+        await setDoc(doc(db,"results",id), resultDoc);
         btn.textContent = "Saved ✓";
         await calculateLeaderboard();
         setTimeout(()=>{ btn.textContent = orig; }, 1800);
@@ -2731,6 +2814,7 @@ async function renderMatches() {
         btn.textContent = orig;
       } finally {
         btn.disabled = false; homeInp.disabled = false; awayInp.disabled = false;
+        if (advSel) advSel.disabled = false;
       }
     });
   });
@@ -3023,7 +3107,7 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
     if (ed.exists()) existing = ed.data().predictions || {};
   } catch(_){}
 
-  let savedCount = 0, blankCount = 0, skipped = 0;
+  let savedCount = 0, blankCount = 0, skipped = 0, needAdvances = 0;
   const openMatches = [];
 
   matches.forEach(m => {
@@ -3032,8 +3116,18 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
     const h = document.getElementById(`home-${m.id}`)?.value;
     const a = document.getElementById(`away-${m.id}`)?.value;
     const bothFilled = h !== "" && a !== "" && h != null && a != null;
+    const isKnockout = m.stage === "Knockout";
+    const advances = advancesDraft[m.id] || null;
     if (bothFilled) {
-      existing[m.id] = { home: Number(h), away: Number(a) };
+      if (isKnockout && !advances) {
+        // Knockout score entered but no advancing team chosen — can't save it yet.
+        needAdvances++;
+        if (existing[m.id] !== undefined) delete existing[m.id];
+        return;
+      }
+      const entry = { home: Number(h), away: Number(a) };
+      if (isKnockout) entry.advances = advances;
+      existing[m.id] = entry;
       savedCount++;
     } else {
       // Leave a blank card as truly "no prediction": don't store null noise.
@@ -3071,6 +3165,7 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
     calculateLeaderboard();
 
     let msg = `Saved ${savedCount} prediction${savedCount===1?"":"s"}.`;
+    if (needAdvances) msg += `\n\n⚠️ ${needAdvances} knockout match${needAdvances===1?"" :"es"} not saved — you entered a score but didn't pick who advances. Choose the advancing team on those cards.`;
     if (blankCount) msg += `\n\n⚠️ ${blankCount} open match${blankCount===1?" is":"es are"} still blank — scroll for the "○ Not predicted" tags and fill them in.`;
     if (skipped)    msg += `\n\n🔒 ${skipped} locked match${skipped===1?"":"es"} left unchanged.`;
     alert(msg);
@@ -3120,6 +3215,7 @@ async function calculateLeaderboard() {
     const userName = data.user || tp.user || "Unknown";
 
     let matchPts = 0, exact = 0, outcome = 0, decided = 0;
+    let advCorrect = 0, advDecided = 0;  // "who advances" accuracy components
     matches.forEach(m => {
       const pred = data.predictions?.[m.id];
       const act  = results[m.id];
@@ -3139,10 +3235,19 @@ async function calculateLeaderboard() {
       if (isOutcome) outcome++;   // true whenever exact is true, plus result-only hits
       if (isExact)        matchPts += 3*mul;
       else if (isOutcome) matchPts += 1*mul;
+
+      // Knockout "who advances" bonus: scored on the after-extra-time result.
+      // Correct pick = 1 × 1.5 = 1.5, STACKS on top of the scoreline points.
+      if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
+        advDecided++;
+        if (pred.advances === act.advancedTeam) { matchPts += 1*1.5; advCorrect++; }
+      }
     });
 
-    // Accuracy = correct outcomes ÷ resolved games the player actually picked.
-    const accuracy = decided > 0 ? (outcome / decided) * 100 : null;
+    // Accuracy = correct outcomes ÷ decided games, INCLUDING the advances bonus
+    // (each advances pick adds one correct/decided event per the chosen rule).
+    const accDenom = decided + advDecided;
+    const accuracy = accDenom > 0 ? ((outcome + advCorrect) / accDenom) * 100 : null;
 
     // Tournament bonus points (only awarded when admin has entered the actual result)
     let bonusPts = 0;
@@ -3272,6 +3377,17 @@ async function runScoringAudit() {
           if (isExact)        { pts = 3*mul; note = `exact${mul!==1?` ×${mul}`:""}`; cls = "text-green-400"; }
           else if (isOutcome) { pts = 1*mul; note = `result${mul!==1?` ×${mul}`:""}`; cls = "text-yellow-400"; }
           else                { pts = 0; note = "wrong"; cls = "text-slate-500"; }
+
+          // Knockout "who advances" bonus (after extra time): +1.5, stacks.
+          if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
+            if (pred.advances === act.advancedTeam) {
+              pts += 1*1.5;
+              note += `${note?" · ":""}advances ✓ +1.5`;
+              if (cls === "text-slate-500") cls = "text-yellow-400";
+            } else {
+              note += `${note?" · ":""}advances ✗`;
+            }
+          }
           matchPts += pts;
         }
       }
@@ -3820,20 +3936,29 @@ async function renderAllPicks() {
           pickLabel  = `${pred.home}–${pred.away}`;
           icon       = "🎯";
           pts        = 3 * mul;
-          pointsHtml = `<span class="text-green-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
         } else if (getOutcome(pred.home, pred.away) === getOutcome(result.home, result.away)) {
           pickClass  = "pick-correct";
           pickLabel  = `${pred.home}–${pred.away}`;
           icon       = "✅";
           pts        = 1 * mul;
-          pointsHtml = `<span class="text-yellow-400 font-bold text-xs ml-2">+${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>`;
         } else {
           pickClass  = "pick-wrong";
           pickLabel  = `${pred.home}–${pred.away}`;
           icon       = "❌";
           pts        = 0;
-          pointsHtml = `<span class="text-slate-600 text-xs ml-2">0 pts</span>`;
         }
+        // Knockout "who advances" bonus (+1.5, stacks)
+        let advTag = "";
+        if (m.stage === "Knockout" && result.advancedTeam && pred.advances) {
+          if (pred.advances === result.advancedTeam) {
+            pts += 1.5;
+            advTag = ` <span class="text-green-400/90">▸${escapeHtml(pred.advances)} ✓</span>`;
+          } else {
+            advTag = ` <span class="text-slate-500">▸${escapeHtml(pred.advances)} ✗</span>`;
+          }
+        }
+        const ptColor = pts > 0 ? (pickClass === "pick-exact" ? "text-green-400" : "text-yellow-400") : "text-slate-600";
+        pointsHtml = `<span class="${ptColor} font-bold text-xs ml-2">${pts>0?"+":""}${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>${advTag}`;
       }
 
       return { p, pickClass, pickLabel, pointsHtml, icon, pts, scored };
@@ -3910,6 +4035,10 @@ async function buildReportDataset() {
         if (pred.home === act.home && pred.away === act.away) { outcome = "exact"; pts = 3*mul; }
         else if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) { outcome = "correct"; pts = 1*mul; }
         else { outcome = "wrong"; pts = 0; }
+        // Knockout "who advances" bonus (+1.5, stacks on the scoreline points)
+        if (m.stage === "Knockout" && act.advancedTeam && pred.advances && pred.advances === act.advancedTeam) {
+          pts += 1*1.5;
+        }
       } else if (hasPred && !hasResult) {
         outcome = "pending";
       }
@@ -4185,6 +4314,7 @@ async function buildChartData() {
     const preds = data.predictions || {};
 
     let matchPts = 0, exact = 0, correctOnly = 0, wrong = 0, decided = 0, noPick = 0;
+    let advCorrect = 0, advDecided = 0;
     // Cumulative points aligned to the completed-match order
     const cumulative = [];
     let running = 0;
@@ -4200,6 +4330,11 @@ async function buildChartData() {
       if (isExact) { exact++; running += 3*mul; }
       else if (isOutcome) { correctOnly++; running += 1*mul; }
       else { wrong++; }
+      // Knockout "who advances" bonus (+1.5, stacks)
+      if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
+        advDecided++;
+        if (pred.advances === act.advancedTeam) { running += 1*1.5; advCorrect++; }
+      }
       cumulative.push(running);
     });
     matchPts = running;
@@ -4213,8 +4348,9 @@ async function buildChartData() {
     }
     if (topScorer && (tp.topScorer||"").trim().toLowerCase() === topScorer) bonusPts += POINTS_TOP_SCORER;
 
-    const totalCorrect = exact + correctOnly;
-    const accuracy = decided > 0 ? (totalCorrect / decided) * 100 : null;
+    const totalCorrect = exact + correctOnly + advCorrect;
+    const accDenom = decided + advDecided;
+    const accuracy = accDenom > 0 ? (totalCorrect / accDenom) * 100 : null;
 
     players.push({
       uid, name,
@@ -5304,15 +5440,22 @@ async function renderTournamentView(uid) {
         predStr = `${pred.home}–${pred.away}`;
         if (act?.home !== undefined) {
           const mul = m.stage === "Knockout" ? 1.5 : 1;
+          let base = 0, baseHtml = "";
           if (pred.home === act.home && pred.away === act.away) {
-            const p = 3*mul;
-            pointsHtml = `<span class="text-green-400 text-xs ml-2">🎯 +${p%1===0?p:p.toFixed(1)}</span>`;
+            base = 3*mul; baseHtml = `<span class="text-green-400 text-xs ml-2">🎯 +${base%1===0?base:base.toFixed(1)}</span>`;
           } else if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) {
-            const p = 1*mul;
-            pointsHtml = `<span class="text-yellow-400 text-xs ml-2">✅ +${p%1===0?p:p.toFixed(1)}</span>`;
+            base = 1*mul; baseHtml = `<span class="text-yellow-400 text-xs ml-2">✅ +${base%1===0?base:base.toFixed(1)}</span>`;
           } else {
-            pointsHtml = `<span class="text-slate-600 text-xs ml-2">0</span>`;
+            baseHtml = `<span class="text-slate-600 text-xs ml-2">0</span>`;
           }
+          // Knockout advances bonus
+          let advHtml = "";
+          if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
+            advHtml = pred.advances === act.advancedTeam
+              ? `<span class="text-green-400 text-xs ml-1">▸+1.5</span>`
+              : `<span class="text-slate-600 text-xs ml-1">▸✗</span>`;
+          }
+          pointsHtml = baseHtml + advHtml;
         } else {
           pointsHtml = `<span class="text-slate-500 text-xs ml-2">⏳</span>`;
         }
