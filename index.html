@@ -1968,6 +1968,18 @@ function matchLocked(match, globalLocked) {
 // ── DATA ──────────────────────────────────────────────────────
 function getOutcome(h,a) { return h>a?"HOME":a>h?"AWAY":"DRAW"; }
 
+// Resolve the advancing team a prediction implies, for knockout scoring.
+// If the predicted score is decisive, the higher-scoring side advances —
+// this is auto-derived so older picks saved without an `advances` field still
+// score the bonus. Only a predicted DRAW relies on the stored `advances`.
+function effectiveAdvances(pred, match) {
+  if (!pred || !match || match.stage !== "Knockout") return null;
+  if (!Number.isInteger(pred.home) || !Number.isInteger(pred.away)) return null;
+  if (pred.home > pred.away) return match.home;
+  if (pred.away > pred.home) return match.away;
+  return pred.advances || null;   // draw → use the explicit pick (penalties)
+}
+
 async function getMatches() {
   const snap = await getDocs(collection(db,"matches"));
   const arr  = [];
@@ -3324,9 +3336,10 @@ async function calculateLeaderboard() {
 
       // Knockout "who advances" bonus: scored on the after-extra-time result.
       // Correct pick = 1 × 2 = 2, STACKS on top of the scoreline points.
-      if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
+      const predAdv = effectiveAdvances(pred, m);
+      if (m.stage === "Knockout" && act.advancedTeam && predAdv) {
         advDecided++;
-        if (pred.advances === act.advancedTeam) { matchPts += 1*2; advCorrect++; }
+        if (predAdv === act.advancedTeam) { matchPts += 1*2; advCorrect++; }
       }
     });
 
@@ -3465,8 +3478,9 @@ async function runScoringAudit() {
           else                { pts = 0; note = "wrong"; cls = "text-slate-500"; }
 
           // Knockout "who advances" bonus (after extra time): +2, stacks.
-          if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
-            if (pred.advances === act.advancedTeam) {
+          const predAdv = effectiveAdvances(pred, m);
+          if (m.stage === "Knockout" && act.advancedTeam && predAdv) {
+            if (predAdv === act.advancedTeam) {
               pts += 1*2;
               note += `${note?" · ":""}advances ✓ +2`;
               if (cls === "text-slate-500") cls = "text-yellow-400";
@@ -4033,14 +4047,16 @@ async function renderAllPicks() {
           icon       = "❌";
           pts        = 0;
         }
-        // Knockout "who advances" bonus (+2, stacks)
+        // Knockout "who advances" bonus (+2, stacks). Auto-derive from a
+        // decisive predicted score so picks saved before the feature still score.
         let advTag = "";
-        if (m.stage === "Knockout" && result.advancedTeam && pred.advances) {
-          if (pred.advances === result.advancedTeam) {
+        const predAdv = effectiveAdvances(pred, m);
+        if (m.stage === "Knockout" && result.advancedTeam && predAdv) {
+          if (predAdv === result.advancedTeam) {
             pts += 2;
-            advTag = ` <span class="text-green-400/90">▸${escapeHtml(pred.advances)} ✓</span>`;
+            advTag = ` <span class="text-green-400/90">▸${escapeHtml(predAdv)} ✓</span>`;
           } else {
-            advTag = ` <span class="text-slate-500">▸${escapeHtml(pred.advances)} ✗</span>`;
+            advTag = ` <span class="text-slate-500">▸${escapeHtml(predAdv)} ✗</span>`;
           }
         }
         const ptColor = pts > 0 ? (pickClass === "pick-exact" ? "text-green-400" : "text-yellow-400") : "text-slate-600";
@@ -4122,7 +4138,8 @@ async function buildReportDataset() {
         else if (getOutcome(pred.home,pred.away) === getOutcome(act.home,act.away)) { outcome = "correct"; pts = 1*mul; }
         else { outcome = "wrong"; pts = 0; }
         // Knockout "who advances" bonus (+2, stacks on the scoreline points)
-        if (m.stage === "Knockout" && act.advancedTeam && pred.advances && pred.advances === act.advancedTeam) {
+        const predAdv = effectiveAdvances(pred, m);
+        if (m.stage === "Knockout" && act.advancedTeam && predAdv && predAdv === act.advancedTeam) {
           pts += 1*2;
         }
       } else if (hasPred && !hasResult) {
@@ -4417,9 +4434,10 @@ async function buildChartData() {
       else if (isOutcome) { correctOnly++; running += 1*mul; }
       else { wrong++; }
       // Knockout "who advances" bonus (+2, stacks)
-      if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
+      const predAdv = effectiveAdvances(pred, m);
+      if (m.stage === "Knockout" && act.advancedTeam && predAdv) {
         advDecided++;
-        if (pred.advances === act.advancedTeam) { running += 1*2; advCorrect++; }
+        if (predAdv === act.advancedTeam) { running += 1*2; advCorrect++; }
       }
       cumulative.push(running);
     });
@@ -5536,8 +5554,9 @@ async function renderTournamentView(uid) {
           }
           // Knockout advances bonus
           let advHtml = "";
-          if (m.stage === "Knockout" && act.advancedTeam && pred.advances) {
-            advHtml = pred.advances === act.advancedTeam
+          const predAdv = effectiveAdvances(pred, m);
+          if (m.stage === "Knockout" && act.advancedTeam && predAdv) {
+            advHtml = predAdv === act.advancedTeam
               ? `<span class="text-green-400 text-xs ml-1">▸+2</span>`
               : `<span class="text-slate-600 text-xs ml-1">▸✗</span>`;
           }
