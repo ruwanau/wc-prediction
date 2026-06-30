@@ -2534,6 +2534,19 @@ async function renderMatches() {
   const [matches, results, globalLocked] = await Promise.all([getMatches(), getResults(), getLocked()]);
   const con   = document.getElementById("matchesContainer");
   const adm   = document.getElementById("adminMatches");
+
+  // Preserve any in-progress admin edits + focus across this rebuild, so a
+  // realtime snapshot (e.g. after saving a result) doesn't wipe what the admin
+  // is currently typing — which previously made saves appear to need two clicks.
+  const adminEditState = {};
+  adm.querySelectorAll("input, select").forEach(el => {
+    if (el.id && document.activeElement !== el && el.value !== "") adminEditState[el.id] = el.value;
+  });
+  const focusedId = (document.activeElement && adm.contains(document.activeElement)) ? document.activeElement.id : null;
+  let focusedSelStart = null;
+  if (focusedId) { try { focusedSelStart = document.activeElement.selectionStart; } catch(_){} }
+  const focusedVal = focusedId ? document.activeElement.value : null;
+
   con.innerHTML = ""; adm.innerHTML = "";
 
   // Track which matches are knockout (needed for the required "advances" pick)
@@ -2725,7 +2738,7 @@ async function renderMatches() {
           <span class="text-yellow-400 font-bold display-font text-xl">:</span>
           <input type="number" min="0" id="actual-away-${m.id}" value="${actual?.away??""}"
             class="w-16 h-11 rounded-lg bg-slate-700 border border-slate-600 text-center focus:outline-none focus:border-yellow-500 transition" />
-          <button class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm transition" data-id="${m.id}">Save</button>
+          <button class="save-result-btn bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm transition" data-id="${m.id}" data-home="${escapeHtml(m.home)}" data-away="${escapeHtml(m.away)}" data-stage="${m.stage}">Save</button>
           <button class="del-result-btn bg-slate-700 hover:bg-red-700 border border-slate-600 hover:border-red-600 px-3 py-2 rounded-lg text-sm transition" title="Delete result" data-id="${m.id}">🗑</button>
         </div>
       </div>
@@ -2880,16 +2893,18 @@ async function renderMatches() {
 
       // Knockout matches: who advanced (after extra time).
       const advSel = document.getElementById(`advanced-${id}`);
-      const isKnockout = knockoutMatchIds.has(id);
+      const isKnockout = (btn.dataset.stage === "Knockout") || knockoutMatchIds.has(id);
       const hn = Number(h), an = Number(a);
 
       // Build the result doc; only knockout matches carry advancedTeam.
       const resultDoc = { home: hn, away: an };
       if (isKnockout) {
-        const m = (await getMatches()).find(x => x.id === id);
+        // Use the team names embedded on the button — no async round-trip, so
+        // nothing can re-render the card between reading inputs and writing.
+        const homeTeam = btn.dataset.home, awayTeam = btn.dataset.away;
         let advancedTeam = "";
-        if (hn > an) advancedTeam = m.home;            // decisive — auto
-        else if (an > hn) advancedTeam = m.away;       // decisive — auto
+        if (hn > an) advancedTeam = homeTeam;          // decisive — auto
+        else if (an > hn) advancedTeam = awayTeam;     // decisive — auto
         else advancedTeam = advSel ? advSel.value : ""; // draw — admin must choose
         if (hn === an && !advancedTeam) {
           alert("This knockout match is a draw after extra time — choose which team advanced (on penalties).");
@@ -2960,10 +2975,24 @@ async function renderMatches() {
   });
 
   updateLockLabel();
-}
 
-// ── ADD MATCH ─────────────────────────────────────────────────
-// Populate the admin Add-Match country dropdowns (alphabetical)
+  // Restore any admin edits the rebuild would otherwise have wiped.
+  Object.entries(adminEditState).forEach(([id,val]) => {
+    const el = document.getElementById(id);
+    if (el && el.value === "") el.value = val;
+  });
+  if (focusedId) {
+    const el = document.getElementById(focusedId);
+    if (el) {
+      if (focusedVal != null) el.value = focusedVal;   // keep what was being typed
+      try { el.focus(); } catch(_){}
+      // Only text/search inputs support selection range (number inputs throw).
+      if (focusedSelStart != null && /^(text|search|tel|url|password)$/.test(el.type || "")) {
+        try { el.setSelectionRange(focusedSelStart, focusedSelStart); } catch(_){}
+      }
+    }
+  }
+}
 function populateMatchCountryDropdowns() {
   ["homeTeam","awayTeam"].forEach(id => {
     const sel = document.getElementById(id);
