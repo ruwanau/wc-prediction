@@ -830,6 +830,12 @@
     <div class="glass rounded-2xl p-6">
       <h2 class="display-font text-3xl text-yellow-400 mb-1">Game Picks</h2>
       <p class="text-slate-400 text-sm">Everyone's match predictions, compared to the final result · Only matches whose prediction window has closed are shown</p>
+      <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+        <span>🎯 Exact score: <strong class="text-slate-300">3</strong> pts</span>
+        <span>✅ Correct result: <strong class="text-slate-300">1</strong> pt</span>
+        <span class="text-purple-300/90">Knockout games score <strong>×2</strong> (exact 6, result 2)</span>
+        <span class="text-purple-300/90">▸ Correct team to advance: <strong>+2</strong> (knockout)</span>
+      </div>
       <div class="flex flex-wrap gap-4 mt-4 text-xs">
         <span class="pick-exact   rounded-lg px-3 py-1.5 font-medium">🎯 Exact score (+3 pts)</span>
         <span class="pick-correct rounded-lg px-3 py-1.5 font-medium">✅ Correct result (+1 pt)</span>
@@ -2591,6 +2597,7 @@ async function renderMatches() {
         <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
           <div class="flex items-center gap-2">
             <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+            ${m.stage==='Knockout' ? `<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30" title="Knockout matches score double, plus +2 for correctly picking who advances.">×2 points</span>` : ""}
             ${badge}
           </div>
           <span class="text-xs text-slate-400">📅 ${fmtLocal(m.kickoffUtcMs)}</span>
@@ -2762,8 +2769,9 @@ async function renderMatches() {
     adm.appendChild(ac);
   });
 
-  // Restore this user's predictions
-  loadMyPredictions();
+  // Restore this user's predictions (awaited so inputs are populated before
+  // any save can read them — prevents blank-input races that lost picks)
+  await loadMyPredictions();
 
   // Per-card "Save this pick" buttons
   document.querySelectorAll(".save-one-btn").forEach(btn => {
@@ -3248,8 +3256,8 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
     if (bothFilled) {
       if (isKnockout && !advances) {
         // Knockout score entered but no advancing team chosen — can't save it yet.
+        // IMPORTANT: do NOT delete an existing saved pick here.
         needAdvances++;
-        if (existing[m.id] !== undefined) delete existing[m.id];
         return;
       }
       const entry = { home: Number(h), away: Number(a) };
@@ -3257,9 +3265,12 @@ document.getElementById("savePredictionsBtn").addEventListener("click", async ()
       existing[m.id] = entry;
       savedCount++;
     } else {
-      // Leave a blank card as truly "no prediction": don't store null noise.
-      if (existing[m.id] !== undefined) delete existing[m.id];
-      blankCount++;
+      // Blank input. CRITICAL: a blank card must NOT wipe a previously-saved
+      // prediction. Empty inputs can happen from collapsed day panels, a slow
+      // initial load, or a mid-render snapshot — deleting on blank was causing
+      // saved predictions to silently disappear. We only count it as "still
+      // blank" for the summary if nothing is saved for it; saved picks are kept.
+      if (existing[m.id] === undefined) blankCount++;
     }
   });
 
@@ -4016,6 +4027,7 @@ async function renderAllPicks() {
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-4 bg-slate-900/60 border-b border-white/5">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m.stage==='Knockout'?'badge-knockout':'badge-group'}">${m.stage}</span>
+          ${m.stage==='Knockout' ? `<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30" title="Knockout matches score double: exact 6, correct result 2, plus +2 for the correct team to advance.">×2 points</span>` : ""}
           <span class="font-bold text-white">${m.home}</span>
           <span class="text-slate-500 text-sm">vs</span>
           <span class="font-bold text-white">${m.away}</span>
@@ -4089,7 +4101,7 @@ async function renderAllPicks() {
           }
         }
         const ptColor = pts > 0 ? (pickClass === "pick-exact" ? "text-green-400" : "text-yellow-400") : "text-slate-600";
-        pointsHtml = `<span class="${ptColor} font-bold text-xs ml-2">${pts>0?"+":""}${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>${advTag}`;
+        pointsHtml = `<span class="${ptColor} font-bold text-xs">${pts>0?"+":""}${pts % 1 === 0 ? pts : pts.toFixed(1)} pts</span>${advTag}`;
       }
 
       return { p, pickClass, pickLabel, pointsHtml, icon, pts, scored };
@@ -4110,16 +4122,18 @@ async function renderAllPicks() {
       const p = rd.p;
       const av = avatarContent(p.uid, p.name.slice(0,2).toUpperCase());
       const row = document.createElement("div");
-      row.className = `flex items-center justify-between gap-3 px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
+      row.className = `px-4 sm:px-5 py-3 ${p.isMe ? "bg-yellow-400/3" : "hover:bg-white/2"} transition`;
+      // Two-line layout: name + pick on top, points + advances tag below.
+      // Keeps long player names from being clipped on narrow phones.
       row.innerHTML = `
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="user-avatar flex-shrink-0 ${av.hasFlag?'has-flag':''}" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${av.html}</div>
-          <span class="text-sm font-medium truncate">${p.name}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="user-avatar flex-shrink-0 ${av.hasFlag?'has-flag':''}" style="width:1.8rem;height:1.8rem;font-size:0.7rem">${av.html}</div>
+            <span class="text-sm font-medium truncate">${escapeHtml(p.name)}${p.isMe ? ' <span class="text-yellow-400 text-xs">(you)</span>' : ""}</span>
+          </div>
+          <span class="${rd.pickClass} pick-score rounded-lg px-3 py-1 flex-shrink-0">${rd.icon} ${rd.pickLabel}</span>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <span class="${rd.pickClass} pick-score rounded-lg px-3 py-1">${rd.icon} ${rd.pickLabel}</span>
-          ${rd.pointsHtml}
-        </div>`;
+        ${rd.pointsHtml ? `<div class="flex items-center gap-2 mt-1.5 text-xs" style="padding-left:2.55rem">${rd.pointsHtml}</div>` : ""}`;
       rowsWrap.appendChild(row);
     });
 
